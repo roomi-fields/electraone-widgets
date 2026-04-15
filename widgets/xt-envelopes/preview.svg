@@ -1,108 +1,233 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1016 560" width="1016" height="560" role="img" aria-label="XT Envelopes widget preview">
-  <!-- Electra One MK2 display (1016×560), XT envelopes by Thomas Moravansky -->
+<svg xmlns="http://www.w3.org/2000/svg" data-v-1a61d7ae="" viewBox="0 0 996 560" width="1024" height="600" class="display preview-image">
+    <style>
+        .name {
+    font-family: 'Open Sans';
+    font-size: 16px;
+    }
+    .name-small {
+    font-family: 'Open Sans';
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+    }
+    .slot-id-small {
+    font-family: 'Open Sans';
+    font-size: 10px;
+    text-transform: uppercase;
+    }
+    .value {
+    font-family: 'Open Sans';
+    font-size: 16px;
+    font-weight: bold;
+    }
+    </style>
+    <defs>
+        <style type="text/css">
+            @import url('https://fonts.googleapis.com/css?family=Open+Sans:400,700&amp;display=swap');
 
-  <!-- background -->
-  <rect x="0" y="0" width="1016" height="560" fill="#000000"/>
+      body {
+      margin: 0;
+      padding: 0;
+      }
 
-  <!-- ====== Custom tile: envelope canvas ======
-       WAVE mode 8-point envelope, Lua colors:
-       STD_COLOR 0xB0C0 ~ pale gold #B0B0C0
-       ACT_COLOR 0xFF0000 red (active point)
-       ON_COLOR  0x0000FF blue (key-on loop)
-       OFF_COLOR 0x00FF00 green (key-off loop)
-       WIN_OFST 70, SCALEX 0.90625, SCALEY 2 -->
-  <g transform="translate(12, 20)">
-    <rect x="0" y="70" width="992" height="256" fill="none" stroke="#B0B0C0" stroke-width="1"/>
+      text {
+      font-family: 'Avenir', Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      color: #2c3e50;
+      }
 
-    <!-- loop indicator strip above canvas -->
-    <rect x="0"   y="35" width="232" height="10" fill="#0000FF" opacity="0.9"/>
-    <rect x="343" y="50" width="10"  height="10" fill="#00FF00" opacity="0.9"/>
-
-    <polyline points="0,326 116,286 232,286 348,286 464,286 528,286 644,286 760,286 876,286 992,326"
-              fill="none" stroke="#B0B0C0" stroke-width="1.2"/>
-
-    <!-- sustain segment emphasis -->
-    <line x1="464" y1="286" x2="528" y2="286" stroke="#B0B0C0" stroke-width="2" stroke-dasharray="4,3"/>
-
-    <circle cx="116" cy="286" r="9" fill="#FF0000"/>
-    <circle cx="232" cy="286" r="9" fill="#B0B0C0"/>
-    <circle cx="348" cy="286" r="9" fill="#B0B0C0"/>
-    <circle cx="464" cy="286" r="9" fill="#B0B0C0"/>
-    <circle cx="644" cy="286" r="9" fill="#B0B0C0"/>
-    <circle cx="760" cy="286" r="9" fill="#B0B0C0"/>
-    <circle cx="876" cy="286" r="9" fill="#B0B0C0"/>
-    <circle cx="992" cy="326" r="9" fill="#B0B0C0"/>
-
-    <g font-family="'Open Sans','Helvetica Neue',Arial,sans-serif" font-size="9" fill="#FF0000">
-      <text x="110" y="12">T1: 127</text>
-      <text x="110" y="23">L1:  20</text>
+      .display {
+      background-color: black;
+      }
+        </style>
+    </defs>
+    <g id="2" pageId="1" bounds="515,456,158,81">
+        <line x1="523" x2="552" y1="471" y2="471" stroke="#529DEC" stroke-dasharray="1, 1"/>
+        <line x1="649" x2="677" y1="471" y2="471" stroke="#529DEC" stroke-dasharray="1, 1"/>
+        <line x1="523" x2="523" y1="471" y2="479" stroke="#529DEC" stroke-dasharray="1, 1"/>
+        <line x1="677" x2="677" y1="471" y2="479" stroke="#529DEC" stroke-dasharray="1, 1"/>
+        <!---->
+        <rect x="530" y="463" width="140" height="16" rx="2" ry="2" fill="#529DEC" style="filter: brightness(35%);"/>
+        <text x="600" y="472" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            ENV SELECT
+        </text>
     </g>
-    <g font-family="'Open Sans','Helvetica Neue',Arial,sans-serif" font-size="9" fill="#B0B0C0">
-      <text x="220" y="12">T2: 127</text><text x="220" y="23">L2: 20</text>
-      <text x="330" y="12">T3: 127</text><text x="330" y="23">L3: 20</text>
-      <text x="440" y="12">T4: 127</text><text x="440" y="23">L4: 20</text>
-      <text x="640" y="12">T5: 127</text><text x="640" y="23">L5: 20</text>
-      <text x="750" y="12">T6: 127</text><text x="750" y="23">L6: 20</text>
-      <text x="860" y="12">T7: 127</text><text x="860" y="23">L7: 20</text>
-      <text x="965" y="12">T8: 127</text><text x="965" y="23">L8: 127</text>
+    <g type="fader" visible="visible" bounds="187,388,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-3075">
+                <rect x="189" y="390" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-3075&quot;);">
+            <rect x="203" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="203" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="266" y="408" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="266" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                START
+            </text>
+        </g>
     </g>
-  </g>
-
-  <!-- ====== Surrounding tiles (pads + faders + labels) ====== -->
-  <g font-family="'Open Sans','Helvetica Neue',Arial,sans-serif" font-size="11" font-weight="600" fill="#ffffff">
-
-    <rect x="12" y="380" width="110" height="50" rx="6" fill="none" stroke="#444" stroke-width="1"/>
-    <text x="67" y="410" text-anchor="middle" fill="#888">KEY ON LOOP</text>
-
-    <rect x="128" y="380" width="110" height="50" rx="4" fill="none" stroke="#444"/>
-    <line x1="138" y1="417" x2="228" y2="417" stroke="#555" stroke-width="3"/>
-    <circle cx="140" cy="417" r="6" fill="#0000FF"/>
-    <text x="183" y="398" text-anchor="middle" fill="#0000FF" font-size="9">START</text>
-    <text x="183" y="412" text-anchor="middle" fill="#fff" font-size="10">1</text>
-
-    <rect x="244" y="380" width="110" height="50" rx="4" fill="none" stroke="#444"/>
-    <line x1="254" y1="417" x2="344" y2="417" stroke="#555" stroke-width="3"/>
-    <circle cx="290" cy="417" r="6" fill="#0000FF"/>
-    <text x="299" y="398" text-anchor="middle" fill="#0000FF" font-size="9">END</text>
-    <text x="299" y="412" text-anchor="middle" fill="#fff" font-size="10">4</text>
-
-    <rect x="360" y="380" width="110" height="50" rx="6" fill="none" stroke="#444"/>
-    <text x="415" y="410" text-anchor="middle" fill="#888">KEY OFF LOOP</text>
-
-    <rect x="476" y="380" width="110" height="50" rx="4" fill="none" stroke="#444"/>
-    <line x1="486" y1="417" x2="576" y2="417" stroke="#555" stroke-width="3"/>
-    <circle cx="528" cy="417" r="6" fill="#00FF00"/>
-    <text x="531" y="398" text-anchor="middle" fill="#00FF00" font-size="9">START</text>
-    <text x="531" y="412" text-anchor="middle" fill="#fff" font-size="10">4</text>
-
-    <rect x="592" y="380" width="110" height="50" rx="4" fill="none" stroke="#444"/>
-    <line x1="602" y1="417" x2="692" y2="417" stroke="#555" stroke-width="3"/>
-    <circle cx="692" cy="417" r="6" fill="#00FF00"/>
-    <text x="647" y="398" text-anchor="middle" fill="#00FF00" font-size="9">END</text>
-    <text x="647" y="412" text-anchor="middle" fill="#fff" font-size="10">8</text>
-
-    <rect x="708" y="380" width="150" height="20" rx="3" fill="#529DEC" opacity="0.25"/>
-    <text x="783" y="394" text-anchor="middle" fill="#529DEC" font-size="10" letter-spacing="1">ENV SELECT</text>
-
-    <rect x="12" y="460" width="150" height="80" rx="4" fill="none" stroke="#444"/>
-    <text x="87" y="475" text-anchor="middle" fill="#888" font-size="9">ENV STAGE</text>
-    <line x1="22" y1="520" x2="152" y2="520" stroke="#555" stroke-width="3"/>
-    <circle cx="22" cy="520" r="6" fill="#fff"/>
-    <text x="87" y="535" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">1</text>
-
-    <rect x="170" y="460" width="150" height="80" rx="4" fill="none" stroke="#444"/>
-    <text x="245" y="475" text-anchor="middle" fill="#888" font-size="9">TIME</text>
-    <line x1="180" y1="520" x2="310" y2="520" stroke="#555" stroke-width="3"/>
-    <circle cx="310" cy="520" r="6" fill="#fff"/>
-    <text x="245" y="535" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">127</text>
-
-    <rect x="328" y="460" width="150" height="80" rx="4" fill="none" stroke="#444"/>
-    <text x="403" y="475" text-anchor="middle" fill="#888" font-size="9">LEVEL</text>
-    <line x1="338" y1="520" x2="468" y2="520" stroke="#555" stroke-width="3"/>
-    <circle cx="358" cy="520" r="6" fill="#fff"/>
-    <text x="403" y="535" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">20</text>
-
-    <rect x="708" y="460" width="296" height="80" rx="6" fill="#F45C51" opacity="0.85"/>
-    <text x="856" y="505" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">WAVE ENV</text>
+    <g type="fader" visible="visible" bounds="354,388,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-3076">
+                <rect x="356" y="390" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-3076&quot;);">
+            <rect x="370" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="370" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="433" y="408" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="433" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                END
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="688,388,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-3077">
+                <rect x="690" y="390" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-3077&quot;);">
+            <rect x="704" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="704" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="767" y="408" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="767" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                START
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="855,388,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-3078">
+                <rect x="857" y="390" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-3078&quot;);">
+            <rect x="871" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="871" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="934" y="408" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="934" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                END
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="20,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-3079">
+                <rect x="22" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-3079&quot;);">
+            <rect x="36" y="506" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="36" y="506" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="99" y="498" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="99" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                ENV STAGE
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="187,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-3080">
+                <rect x="189" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-3080&quot;);">
+            <rect x="203" y="506" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="203" y="506" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="266" y="498" text-anchor="middle" fill="#ffffff" class="value">
+                0 - 127
+            </text>
+            <text x="266" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                TIME
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="354,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-3081">
+                <rect x="356" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-3081&quot;);">
+            <rect x="370" y="506" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="370" y="506" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="433" y="498" text-anchor="middle" fill="#ffffff" class="value">
+                0 - 127
+            </text>
+            <text x="433" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                LEVEL
+            </text>
+        </g>
+    </g>
+    <g type="pad" mode="toggle" visible="visible" bounds="20,388,146,56" pageId="1">
+        <rect x="36" y="393" width="126" height="45" fill="#ffffff" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
+        <rect x="36" y="393" width="126" height="48" fill="#ffffff" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
+        <text x="99" y="418" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            KEY ON LOOP
+        </text>
+    </g>
+    <g type="pad" mode="toggle" visible="visible" bounds="521,388,146,56" pageId="1">
+        <rect x="537" y="393" width="126" height="45" fill="#ffffff" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
+        <rect x="537" y="393" width="126" height="48" fill="#ffffff" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
+        <text x="600" y="418" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            KEY OFF LOOP
+        </text>
+    </g>
+    <g type="pad" mode="toggle" visible="visible" bounds="521,478,146,56" pageId="1">
+        <rect x="537" y="483" width="126" height="45" fill="#ffffff" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
+        <rect x="537" y="483" width="126" height="48" fill="#ffffff" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
+        <text x="600" y="508" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            ENV SELECT
+        </text>
+    </g>
+    <g type="custom" bounds="20,28,992,326" pageId="1">
+    <!-- runtime-painted envelope canvas (Lua paintXyPad) -->
+    <g transform="translate(20,28)">
+      <!-- canvas bg -->
+      <rect x="0" y="0" width="992" height="326" fill="#000000"/>
+      <!-- inner drawRect at (0,70)..(992,326) -->
+      <rect x="0" y="70" width="992" height="256" fill="none" stroke="#B0B0C0" stroke-width="1"/>
+      <!-- loop indicators (key-on active blue, key-off inactive diamond green) -->
+      <rect x="0"   y="35" width="232" height="10" fill="#0000FF" opacity="0.9"/>
+      <rect x="343" y="50" width="10"  height="10" fill="#00FF00" opacity="0.9"/>
+      <!-- envelope path with sustain segment after point 4 -->
+      <polyline points="0,326 116,286 232,286 348,286 464,286 528,286 644,286 760,286 876,286 992,326" fill="none" stroke="#B0B0C0" stroke-width="1.2"/>
+      <line x1="464" y1="286" x2="528" y2="286" stroke="#B0B0C0" stroke-width="2" stroke-dasharray="4,3"/>
+      <!-- point dots -->
+      <circle cx="116" cy="286" r="9" fill="#FF0000"/>
+      <circle cx="232" cy="286" r="9" fill="#B0B0C0"/>
+      <circle cx="348" cy="286" r="9" fill="#B0B0C0"/>
+      <circle cx="464" cy="286" r="9" fill="#B0B0C0"/>
+      <circle cx="644" cy="286" r="9" fill="#B0B0C0"/>
+      <circle cx="760" cy="286" r="9" fill="#B0B0C0"/>
+      <circle cx="876" cy="286" r="9" fill="#B0B0C0"/>
+      <circle cx="992" cy="326" r="9" fill="#B0B0C0"/>
+      <!-- T/L labels -->
+      <g font-family="'Open Sans',Arial,sans-serif" font-size="9" fill="#FF0000">
+        <text x="110" y="12">T1: 127</text><text x="110" y="23">L1: 20</text>
+      </g>
+      <g font-family="'Open Sans',Arial,sans-serif" font-size="9" fill="#B0B0C0">
+        <text x="220" y="12">T2: 127</text><text x="220" y="23">L2: 20</text>
+        <text x="330" y="12">T3: 127</text><text x="330" y="23">L3: 20</text>
+        <text x="440" y="12">T4: 127</text><text x="440" y="23">L4: 20</text>
+        <text x="640" y="12">T5: 127</text><text x="640" y="23">L5: 20</text>
+        <text x="750" y="12">T6: 127</text><text x="750" y="23">L6: 20</text>
+        <text x="860" y="12">T7: 127</text><text x="860" y="23">L7: 20</text>
+        <text x="955" y="12">T8: 127</text><text x="955" y="23">L8: 127</text>
+      </g>
+    </g>
   </g>
 </svg>
