@@ -9,7 +9,7 @@ const ROOT = path.resolve(__dirname, "..");
 const WIDGETS = path.join(ROOT, "widgets");
 const DOCS = path.join(ROOT, "docs");
 const PREVIEWS = path.join(DOCS, "previews");
-const EXTS = ["png", "jpg", "jpeg", "webp"];
+const EXTS = ["png", "jpg", "jpeg", "webp", "svg"];
 
 fs.mkdirSync(PREVIEWS, { recursive: true });
 

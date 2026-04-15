@@ -1,9 +1,21 @@
 [
   {
+    "slug": "eg-template",
+    "name": "EG Template — 7-variant Envelope Generator",
+    "description": "A versatile envelope generator preset built on the MK2's native 4-stage envelope tile (`dx7envelope`), re-rendered dynamically by Lua to present **7 different envelope types** from a single control:",
+    "previewExt": "svg"
+  },
+  {
     "slug": "ephemera-sequencer",
     "name": "Ephemera Sequencer",
     "description": "A proof-of-concept **1-track, 16-step melodic sequencer** running on Electra One's standalone Lua firmware. Touch or knobs to edit notes, hardware buttons for transport.",
     "previewExt": "jpg"
+  },
+  {
+    "slug": "xt-envelopes",
+    "name": "XT Envelopes — Custom envelope editor",
+    "description": "A custom control that demonstrates the `paint` / `touch` / `pot` callback system on the Electra One MK2. Implements two envelope modes (`WAVE` 8-point, `FREE` 4-point) with active-point editing, color-coded stages and touch dragging.",
+    "previewExt": "svg"
   },
   {
     "slug": "xypad",

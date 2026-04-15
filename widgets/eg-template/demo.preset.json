@@ -1,0 +1,467 @@
+{
+  "schemaVersion": 3,
+  "targetDevice": "mk2",
+  "id": "HbynnPgMY6ei48yqOlrw",
+  "name": "EG Template",
+  "description": "",
+  "lua": "deviceId = 1\ndevice = devices.get(deviceId)\ndevPort = device:getPort()\ndevChannel = device:getChannel()\nlocal authorDate =\"New Ignis 2026\"\ninfo.setText(authorDate)\n\n\nctls = {1,2,12,13,8,4,6} -- ctl numbers R1,L1,R2..L4\nstages = {\"r1\",\"l1\",\"r2\",\"l2\",\"r3\",\"l3\",\"r4\"}\nstagePar = {1001,1002,1003,1004,1005,1006,1007} -- virtual par of each stage in the EG graph\nctlPar = {11,12,13,14,15,16,17} -- CC par of each stage\n\nslots = {{2,0,0,0,3},{2,0,0,0,0,0,5},{2,0,0,0,3,4},{2,0,0,0,3,4,5},{2,0,8,0,3,4,5},{1,0,2,0,3,4,5},{2,0,3,4,8,9,10},{1,2,3,4,8,9,10}} -- slot position or hide\nnames = {{\"Attack\",127,127,127,\"Decay\",0,0}, -- AD ctl names or fixed values\n        {\"Attack\",127,127,127,127,127,\"Release\"}, -- AR\n        {\"Attack\",127,127,127,\"Decay\",\"Sustain\",\"#R3\"}, -- ADS\n        {\"Attack\",127,127,127,\"Decay\",\"Sustain\",\"Release\"}, -- ADSR\n        {\"Attack\",127,\"Hold\",127,\"Decay\",\"Sustain\",\"Release\"}, -- AHDSR\n        {\"Delay\",0,\"Attack\",127,\"Decay\",\"Sustain\",\"Release\"}, -- DADSR\n        {\"Attack\",127,\"Decay\",\"Breakpoint\",\"Slope\",\"Sustain\",\"Release\"}, -- ADBSSR\n        {\"Attack\",\"Attack Level\",\"Decay\",\"Sustain\",\"Decay2\",\"Sustain2\",\"Release\"} -- ALDSDSR\n        }\n\nfunction setEG(valueObject, value)\n  value = value + 1\n  local position = 0\n  local control = controls.get(ctls[1])\n  for i = 1,7 do\n    control = controls.get(ctls[i])\n    if slots[value][i] then position = slots[value][i] else position = 0 end \n    if position == 0 then \n      control:setVisible (false)\n      if type(names[value][i]) == \"number\" then -- set a fixed value\n        parameterMap.set(deviceId, PT_VIRTUAL,stagePar[i],names[value][i])\n      end\n    else -- visible control\n      control:setSlot(slots[value][i], 1)\n      control:setName (names[value][i])\n      control:setVisible (true)\n      parameterMap.set(deviceId, PT_VIRTUAL,stagePar[i],parameterMap.get(deviceId, PT_CC7,ctlPar[i]))\n    end\n  end \nend\n\nfunction convRate(valueObject, value)\n  local message = valueObject:getMessage ()\n  local paramNum = message:getParameterNumber()\n  parameterMap.set (deviceId, PT_VIRTUAL, paramNum+990, 127-value)\n  if paramNum == 15 and parameterMap.get (deviceId, PT_CC7, 9) == 2 then -- ADS EG\n    parameterMap.set (deviceId, PT_VIRTUAL, 1007, 127-value)  -- set release equal to sustain\n  end\nend\n\nfunction convLevel(valueObject, value)\n  local message = valueObject:getMessage ()\n  local paramNum = message:getParameterNumber()\n  parameterMap.set (deviceId, PT_VIRTUAL, paramNum+990, value)\nend",
+  "devices": [
+    {
+      "id": 1,
+      "name": "MIDI Device 1",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "7c16afc3-7a77-44ad-9ac8-8d87c6e63290",
+      "reference": 5,
+      "type": "dx7envelope",
+      "deviceId": 1,
+      "color": "F49500",
+      "name": "EG",
+      "values": [
+        {
+          "id": "l1",
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1002,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 127
+        },
+        {
+          "id": "r1",
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1001,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 63
+        },
+        {
+          "id": "l2",
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1004,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 127
+        },
+        {
+          "id": "r2",
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1003,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 63
+        },
+        {
+          "id": "l3",
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1006,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 63
+        },
+        {
+          "id": "r3",
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1005,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 63
+        },
+        {
+          "id": "l4",
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1008,
+            "min": 0,
+            "max": 0
+          },
+          "defaultValue": 0
+        },
+        {
+          "id": "r4",
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1007,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 63
+        }
+      ],
+      "visible": true,
+      "primaryValue": "l4"
+    },
+    {
+      "id": "785120c9-de6e-439e-b472-1692b7387a09",
+      "reference": 11,
+      "type": "list",
+      "deviceId": 1,
+      "color": "F49500",
+      "name": "EG Type",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 9
+          },
+          "textValues": [
+            {
+              "value": 0,
+              "label": "AD"
+            },
+            {
+              "value": 1,
+              "label": "AR"
+            },
+            {
+              "value": 2,
+              "label": "ADS"
+            },
+            {
+              "label": "ADSR",
+              "value": 3
+            },
+            {
+              "label": "AHDSR",
+              "value": 4
+            },
+            {
+              "label": "DADSR",
+              "value": 5
+            },
+            {
+              "label": "ADBSSR",
+              "value": 6
+            },
+            {
+              "label": "ALDSD2S2R",
+              "value": 7
+            }
+          ],
+          "defaultValue": 3,
+          "function": "setEG"
+        }
+      ],
+      "visible": true,
+      "variant": ""
+    },
+    {
+      "id": "46c96de2-202d-4c3e-bbe7-c1ddcde58f52",
+      "reference": 1,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "03A598",
+      "name": "R1",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 11,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 63,
+          "function": "convRate"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": ""
+    },
+    {
+      "id": "7bf11abb-ef7d-4cdf-9b30-7c61e218badd",
+      "reference": 12,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "R2",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 13,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 43,
+          "function": "convRate"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": ""
+    },
+    {
+      "id": "bdb5f435-3a57-40d8-97ba-c4300f3413f1",
+      "reference": 13,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "L2",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 14,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 63,
+          "function": "convLevel"
+        }
+      ],
+      "visible": true,
+      "variant": "dial",
+      "mode": ""
+    },
+    {
+      "id": "fa464c6f-05df-45bc-8b5a-723d0d4b8ec5",
+      "reference": 4,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "L3",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 16,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 41,
+          "function": "convLevel"
+        }
+      ],
+      "visible": true,
+      "variant": "dial",
+      "mode": ""
+    },
+    {
+      "id": "c590764a-db22-4a29-b0b0-6746745142e7",
+      "reference": 6,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "F45C51",
+      "name": "R4",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 17,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 63,
+          "function": "convRate"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": ""
+    },
+    {
+      "id": "bdb5c208-5922-4d6c-98bb-06619b042b4f",
+      "reference": 8,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "R3",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 15,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 63,
+          "function": "convRate"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": ""
+    },
+    {
+      "id": "3febad19-c301-49b7-8046-117007c9790f",
+      "reference": 2,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "L1",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 12,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 127,
+          "function": "convLevel"
+        }
+      ],
+      "visible": true,
+      "variant": "dial",
+      "mode": ""
+    },
+    {
+      "id": "2e29746c-1789-4893-b160-0ea22f6b7212",
+      "reference": 3,
+      "type": "label",
+      "name": "EG Template",
+      "color": "ffffff",
+      "span": "5",
+      "vspan": 2
+    }
+  ],
+  "categories": [],
+  "layouts": [
+    {
+      "id": "mini-4x2",
+      "targetDevice": "mini",
+      "name": "Electra One Mini 4x2",
+      "slots": [],
+      "pages": {}
+    },
+    {
+      "id": "mk2-6x6",
+      "targetDevice": "mk2",
+      "name": "Electra One Mk2 6x6",
+      "slots": [
+        {
+          "id": 0,
+          "tile": {
+            "id": "8ded354c-2cc6-4d13-af0e-271cf1cd4270",
+            "slotId": 0,
+            "type": "ref",
+            "tileId": "2e29746c-1789-4893-b160-0ea22f6b7212"
+          }
+        },
+        {
+          "id": 7,
+          "tile": {
+            "id": "fbf39f7d-a9c7-4646-83de-564a15dd50a0",
+            "slotId": 7,
+            "type": "ref",
+            "tileId": "46c96de2-202d-4c3e-bbe7-c1ddcde58f52"
+          }
+        },
+        {
+          "id": 8,
+          "tile": {
+            "id": "131969b0-1e35-46de-b88b-8b5f3f05ef3b",
+            "slotId": 8,
+            "type": "ref",
+            "tileId": "3febad19-c301-49b7-8046-117007c9790f"
+          }
+        },
+        {
+          "id": 9,
+          "tile": {
+            "id": "11ab8c37-d509-47ed-9c8f-e8ce4b7ebb84",
+            "slotId": 9,
+            "type": "ref",
+            "tileId": "bdb5c208-5922-4d6c-98bb-06619b042b4f"
+          }
+        },
+        {
+          "id": 10,
+          "tile": {
+            "id": "11a8d4ea-ea93-4cbe-9863-dfe3c2f57079",
+            "slotId": 10,
+            "type": "ref",
+            "tileId": "fa464c6f-05df-45bc-8b5a-723d0d4b8ec5"
+          }
+        },
+        {
+          "id": 18,
+          "tile": {
+            "id": "59cfceed-0dd6-4287-a60e-6f16e6039e2a",
+            "slotId": 18,
+            "type": "ref",
+            "tileId": "7c16afc3-7a77-44ad-9ac8-8d87c6e63290"
+          }
+        },
+        {
+          "id": 19,
+          "tile": {
+            "id": "0f237988-3b7c-412e-b11a-5c405e3696b2",
+            "slotId": 19,
+            "type": "ref",
+            "tileId": "7bf11abb-ef7d-4cdf-9b30-7c61e218badd"
+          }
+        },
+        {
+          "id": 20,
+          "tile": {
+            "id": "dd9d2205-b87d-48c5-b45f-c0814ad34352",
+            "slotId": 20,
+            "type": "ref",
+            "tileId": "bdb5f435-3a57-40d8-97ba-c4300f3413f1"
+          }
+        },
+        {
+          "id": 21,
+          "tile": {
+            "id": "71938c8a-5ce9-40be-92c6-5f8791bf588d",
+            "slotId": 21,
+            "type": "ref",
+            "tileId": "c590764a-db22-4a29-b0b0-6746745142e7"
+          }
+        },
+        {
+          "id": 22,
+          "tile": {
+            "id": "d21bcb60-43ac-4d48-9613-ada9bfb6d970",
+            "slotId": 22,
+            "type": "ref",
+            "tileId": "785120c9-de6e-439e-b472-1692b7387a09"
+          }
+        }
+      ],
+      "pages": {
+        "1": {
+          "id": "1",
+          "name": "Page 1"
+        }
+      }
+    }
+  ],
+  "firstPageId": 1
+}

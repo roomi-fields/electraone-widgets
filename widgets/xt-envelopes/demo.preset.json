@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 2,
+  "id": "GK6wmbgvwM6S3GanpoN7",
+  "name": "XT envelopes",
+  "description": "",
+  "lua": "\n-- Preset compatibility check\nassert(\n    controller.isRequired(MODEL_MK2, \"3.6.0\"),\n    \"Version 3.6.0 or higher is required\"\n)\n\ndevId = 0\nportNum = PORT_1\n\n-- Constants\n--\n\nWAVEPTS = 8\nFREEPTS = 4\nNUMPTS  = WAVEPTS\n\nLOW_MIDI =   0\nHI_MIDI  = 127\n\nWIN_OFST = 70\nSUSTAIN  = 64\nSCALEX   = 0.90625\nSCALEY   = 2\n\n-- envelope stage index constants\nAX  = 1\nAY  = 2\nCLR = 3\n\n-- Colors\nlocal STD_COLOR = 0xB0C0\nlocal ACT_COLOR = 0xFF0000\nlocal OFF_COLOR = 0x00FF00\nlocal ON_COLOR  = 0x0000FF\n\n\n-- Active area dimensions\nlocal XY_PAD_WIDTH  = (128 * SCALEX * WAVEPTS) + SUSTAIN\nlocal XY_PAD_HEIGHT = (128 * SCALEY) + WIN_OFST\n\n-- Bunch of globals\n--\n-- Wave, Free envelope point info\n-- activeEnv is assigned to either waveEnv or freeEnv\n-- curEnv is flag for special cases between the envelopes\n--  1 is wave, 2 is free\n--\nlocal activePt  = 1\nlocal curEnv    = 1\nlocal activeEnv = {}\nlocal waveEnv   = {}\nlocal freeEnv   = {}\n\nfreeEnv[0] = {LOW_MIDI, LOW_MIDI+64, STD_COLOR}\nfreeEnv[FREEPTS+1] = {HI_MIDI, HI_MIDI, STD_COLOR}\nfor i=1,FREEPTS do\n   freeEnv[i] = {HI_MIDI, LOW_MIDI+84, STD_COLOR}\nend\nfreeEnv[activePt][CLR] = ACT_COLOR\n\nwaveEnv[0] = {LOW_MIDI, LOW_MIDI, STD_COLOR}\nwaveEnv[WAVEPTS+1] = {HI_MIDI, HI_MIDI, STD_COLOR}\nfor i=1,WAVEPTS do\n   waveEnv[i] = {HI_MIDI, LOW_MIDI+20, STD_COLOR}\nend\nwaveEnv[activePt][CLR] = ACT_COLOR\n\nactiveEnv = waveEnv\n\n-- Wave envelope key loop stuff\n-- [1] is on loop, [2] is off loop\n-- inside each, [1] is start segment, [2] is end segment, [3] is on/off, [4] is the color\nenvLoop = {}\nenvLoop[1] = {1,4,false,ON_COLOR}\nenvLoop[2] = {4,8,false,OFF_COLOR}\n\n\n-- Shortcut for graphics object\nlocal g = graphics\n\n-- The XY pad control\nlocal xyPadControl = controls.get(4)\nxyPadControl.x = 0\nxyPadControl.y = 0\n\n\n-- Initialize the preset\n--\nfunction preset.onLoad()\n    -- Resize the XY Pad (Custom) Control\n    local bounds = xyPadControl:getBounds()\n    bounds[WIDTH] = XY_PAD_WIDTH\n    bounds[HEIGHT] = XY_PAD_HEIGHT\n    xyPadControl:setBounds(bounds)\n\n    -- Assign all Custom Control callbacks\n    xyPadControl:setPaintCallback(paintXyPad)\n    xyPadControl:setTouchCallback(touchCallback)\n   \n   -- set the range for selecting the active point\n   local ctlId = controls.get(5)\n   local valId = ctlId:getValue(\"value\")\n   valId:setRange(1,NUMPTS,1,true)\n\n   -- ctl 1,8,9   for key on loop\n   -- ctl 3,10,11 for key off loop\n   ctlId = controls.get(1)\n   ctlId:setColor(ON_COLOR)\n   ctlId = controls.get(8)\n   ctlId:setColor(ON_COLOR)\n   ctlId = controls.get(9)\n   ctlId:setColor(ON_COLOR)\n\n   ctlId = controls.get(3)\n   ctlId:setColor(OFF_COLOR)\n   ctlId = controls.get(10)\n   ctlId:setColor(OFF_COLOR)\n   ctlId = controls.get(11)\n   ctlId:setColor(OFF_COLOR)\nend\n \n\nfunction printValues()\n   local ts = \"T%d: %d \"\n   local ls = \"L%d: %d \"\n   local tf = \"T8: %d \"\n   local lf = \"L8: %d \"\n   local ofst = 0\n\n   if (curEnv == 2) then\n      ls = \"L%d: %+d \"\n      tf = \"Rel T:  %d \"\n      lf = \"Rel L: %+d \"\n      ofst = SUSTAIN\n   end\n\n   for i=1,NUMPTS do\n         g.setColor(activeEnv[i][CLR])\n         if (i < NUMPTS) then\n            g.print(i*110,  0, string.format(ts, i, activeEnv[i][AX]), 10, LEFT)\n            g.print(i*110, 15, string.format(ls, i, activeEnv[i][AY]-ofst), 10, LEFT)\n         else\n            g.print(i*110,  0, string.format(tf, activeEnv[NUMPTS][AX]), 10, LEFT)\n            g.print(i*110, 15, string.format(lf, activeEnv[NUMPTS][AY]-ofst), 10, LEFT)\n         end\n   end\n   g.setColor(STD_COLOR)\nend\n\nfunction loopVis(isVis)\n   local ctl = controls.get(1)\n   ctl:setVisible(isVis)\n   ctl = controls.get(3)\n   ctl:setVisible(isVis)\n   for i=8,11 do\n      ctl = controls.get(i)\n      ctl:setVisible(isVis)\n   end\nend\n\nfunction loopCalc(loop)\n      local st = 0\n      for i=1,envLoop[loop][1] do st = st + waveEnv[i][AX] end\n      st = math.floor(st * SCALEX)\n\n      local sz = 0\n      for i=envLoop[loop][1]+1,envLoop[loop][2] do  sz = sz + waveEnv[i][AX]  end\n      sz = math.floor(sz * SCALEX)\n      return st,sz\nend\n\n-- A callback to draw the XY pad graphics\n--\nfunction paintXyPad(control, value)\n   local bounds = control:getBounds()\n\n   -- Clear the Control's bounding box\n   g.setColor(0x0000)\n   g.fillRect(0, 0, bounds[WIDTH], bounds[HEIGHT])\n\n   -- Draw the fixed graphics\n   g.setColor(STD_COLOR)\n   g.drawRect(0, WIN_OFST, bounds[WIDTH], bounds[HEIGHT]-WIN_OFST)\n   \n   if (curEnv == 1) then\n      -- Draw the key on and key off loop indicators\n      local strt, lnth\n      for i=1,2 do\n         strt,lnth = loopCalc(i)\n         g.setColor(envLoop[i][4])\n\n         if (envLoop[i][3] == true) then\n            if (i == 2) and (envLoop[1][3] == false) then strt = strt + SUSTAIN end\n            g.fillRect(strt, (i*15)+20, lnth, 10)\n         else\n            local keyRel = 0\n            local ofst = 0\n            for j=1,envLoop[i][2] do keyRel = keyRel + waveEnv[j][AX] end\n            if (envLoop[1][3] == false) then ofst = SUSTAIN end\n            \n            keyRel = math.floor(keyRel * SCALEX) + ofst\n            g.fillRect(keyRel-5, (i*15)+20, 10, 10)\n         end\n      end\n   else\n      local zeroLine = math.floor((XY_PAD_HEIGHT + WIN_OFST) / 2)\n      g.setColor(STD_COLOR)\n      g.drawLine(0, zeroLine, XY_PAD_WIDTH, zeroLine)\n   end\n\n   local xPos = 0\n   local yPos = XY_PAD_HEIGHT\n   for i=1,NUMPTS do\n      local xScale = math.floor(activeEnv[i][AX] * SCALEX)\n      local ym1Scale = activeEnv[i-1][AY] * SCALEY\n      local yScale   = activeEnv[i][AY] * SCALEY\n\n      g.setColor(activeEnv[i][CLR])\n      g.fillCircle(xPos + xScale, yPos - yScale, 10)\n      g.setColor(STD_COLOR)\n      g.drawLine(xPos, yPos - ym1Scale, xPos + xScale, yPos - yScale)\n      xPos = xPos + xScale\n\n      if (curEnv == 1) and (i == envLoop[1][2]) and (envLoop[1][3] == false) then\n         g.drawLine(xPos, yPos - yScale, xPos + SUSTAIN, yPos - yScale)\n         xPos = xPos + SUSTAIN\n      end\n   end     \n   \n   -- show the time and level values for each point\n   printValues()\nend\n\n-- A callback to handle an LCD touch\n--\nfunction touchCallback(control, touchEvent)\n   local endPt = NUMPTS+1\n   local tolerance = 25  -- Increased tolerance for touch detection\n \n   if touchEvent.type == MOVE then\n      local preX = 0\n      local postX = 0\n      \n      -- if we go 'out of bounds', just stop      \n      if (touchEvent.y < WIN_OFST) then return end\n      \n      -- preX and postX are for boundary checking.  For most applications\n      -- we do not want envelope points crossing each other\n      for i=1,activePt-1 do  preX = preX + activeEnv[i][AX]  end\n      postX = preX + activeEnv[activePt][AX]\n      if (activePt ~= endPt) then\n         postX = postX + activeEnv[activePt+1][AX]\n      end\n\n      if (activePt ~= endPt) and (touchEvent.x >= preX) and (touchEvent.x <= postX) then\n         control.x = touchEvent.x\n         control.y = touchEvent.y\n         -- need to 'unscale' the value here\n         activeEnv[activePt][AX] = math.min(math.floor((control.x - preX) / SCALEX), HI_MIDI)\n         activeEnv[activePt][AY] = math.floor((XY_PAD_HEIGHT - control.y) / SCALEY)\n\n         -- this updates the control in real time.  Not sure we need this since the other graphics are doing it\n         -- could move this to the UP event unless we need to be sending MIDI while moving.\n         -- maybe either/or depending on whether the receiving device can handle the stream\n         parameterMap.set(1,PT_VIRTUAL, 9,activeEnv[activePt][AX])\n         parameterMap.set(1,PT_VIRTUAL,10,activeEnv[activePt][AY])\n      end\n   elseif touchEvent.type == DOWN then\n      local i = 1\n      local xPos = 0\n      local yPos = XY_PAD_HEIGHT\n\n      -- if we are in bounds, check which point, else nothing selected      \n      if (touchEvent.y >= WIN_OFST) then\n         while (i < endPt) do\n            local xScale = math.floor(activeEnv[i][AX] * SCALEX)\n            -- for wave envelope, check if sustain is active (looping off) and look for the sustain segment\n            if (curEnv == 1) and (envLoop[1][3] == false) and (i == envLoop[1][2]+1) then\n               xScale = xScale + SUSTAIN\n            end\n            local yScale = activeEnv[i][AY] * SCALEY\n\n            if (touchEvent.x >= (xPos + xScale - 15) and touchEvent.x <= (xPos + xScale + 15) and\n                touchEvent.y >= (yPos - yScale - 15) and touchEvent.y <= (yPos - yScale + 15)) then\n               break\n            else\n               xPos = xPos + xScale\n               i = i + 1\n            end\n         end\n      else\n         i = endPt\n      end\n\n      if (activePt ~= endPt) then  activeEnv[activePt][CLR] = STD_COLOR  end\n      if (   i     ~= endPt) then  activeEnv[i][CLR]        = ACT_COLOR  end\n      activePt = i\n      parameterMap.set(1,PT_VIRTUAL,8,math.min(activePt,endPt))\n   end\n\n   control:repaint()\n\nend\n\n-- Wave Env params are time then level by stage starting at 125, so\n-- time  params are 125,127,129,131,133,135,137,139 and\n-- level params are 126,128,130,132,134,136,138,140\n\n-- Free Env params are time then level by stage starting at 149, so\n-- time params  are 149,151,153,155 and\n-- level params are 150, 152, 154, 156\n\n-- NOTE in the sysex, 4,8,9,10 are reserved (i.e. not used) in any editor context.\n-- Borrow 9 and 10 to use as the base for sending all time and level params\n--\n-- I could just use param numbers above and beyond the parameterMap values \n--  like always in the final iteration, but for now this works and the idea is the same.\n-- easier to handle excepetions in code here versus changing values in the control objects all the time\n\n-- bufNum 0x00 = sound edit buffer, 0x20 = multi edit buffer, 0x24 = Global edit buffer\n--        in multi mode, bufNum can be 0x01 to 0x08\nbufNum = 0x00\n\nfunction parameterMap.onChange (valueObjects, origin, midiValue)\n\n   if (origin == MIDI) then return end\n\n   local paramSysex = {}\n \n   local ctlId = valueObjects[1]:getControl():getId()\n   local pNum = valueObjects[1]:getMessage():getParameterNumber()\n   local hh=0x00\n   local pp=0x00\n\n   -- multi stage envelope handling is done by multiplexing the original parameter numbers\n   if (origin == LUA) and (pNum ~= 9) and (pNum ~= 10) then return end\n   \n   -- create objects with control IDs very high as reserved Parameter Numbers and then\n   --  do not process them.\n\n   if (pNum < 240) then\n      -- Time and Level mapped from 2 controls across 16 variables\n      if (pNum == 9) or (pNum == 10) then\n         if (curEnv == 1) then\n            pNum = 114 + pNum + (activePt * 2)\n         else\n            pNum = 138 + pNum + (activePt * 2)\n         end\n      end\n\n      if (pNum > 127) then\n         hh = 0x01\n      end\n      pp = pNum % 128\n      \n      paramSysex = {0x3E, 0x0E, devId, 0x20, bufNum, hh, pp, midiValue}\n   elseif (pNum < 293) then\n      pNum = pNum - 260\n      paramSysex = {0x3E, 0x0E, devId, 0x24, pNum, midiValue}\n   else\n      print(\"multi param\")\n   end\n   midi.sendSysex(portNum, paramSysex)\nend\n\n\n-- formatter functions for point select, x position, and y position\n-- do the display formatting to match the target device here\nfunction dispDot(valueObject,value)\n   if (activePt == NUMPTS+1) then\n      return (\"None\")\n   else\n      return math.floor(activePt)\n   end\nend\n\nfunction dispX(valueObject,value)\n   if (activePt == NUMPTS+1) then\n      return (\" ? \")\n   else\n      return math.floor(activeEnv[activePt][AX])\n   end\nend\n\nfunction dispY(valueObject,value)\n   if (activePt == NUMPTS+1) then\n      return (\" ? \")\n   else\n      local ofst = 0\n      if (curEnv == 2) then ofst = SUSTAIN  end\n      return math.floor(activeEnv[activePt][AY] - ofst)\n   end\nend\n\n\nfunction adjustTime(valueObject,value)\n   if (activePt ~= NUMPTS+1) then\n      activeEnv[activePt][AX] = value\n      xyPadControl:repaint()\n   end\nend\n\n\nfunction adjustLevel(valueObject,value)\n   if (activePt ~= NUMPTS+1) then\n      activeEnv[activePt][AY] = value\n      xyPadControl:repaint()\n   end\nend\n\n\nfunction selectStage(valueObject,value)\n   activeEnv[activePt][CLR] = STD_COLOR\n   activePt = value\n   activeEnv[activePt][CLR] = ACT_COLOR\n\n   parameterMap.set(1,PT_VIRTUAL,9,activeEnv[activePt][AX])\n   parameterMap.set(1,PT_VIRTUAL,10,activeEnv[activePt][AY])\n   xyPadControl:repaint()\nend\n\n\nfunction selectEnvelope(valueObject,value)\n   local ctl = valueObject:getControl()\n   if (value == 1) then\n      freeEnv[activePt][CLR] = STD_COLOR\n      loopVis(true)\n      activeEnv = waveEnv\n      curEnv = 1\n      NUMPTS = WAVEPTS\n      ctl:setName(\"Wave Env\")\n   else\n      waveEnv[activePt][CLR] = STD_COLOR\n      loopVis(false)\n      activeEnv = freeEnv\n      curEnv = 2\n      NUMPTS = FREEPTS\n      ctl:setName(\"Free Env\")\n   end\n   activePt = 1\n   local ctlId = controls.get(5)\n   local valId = ctlId:getValue(\"value\")\n   valId:setRange(1,NUMPTS,activePt,true)\n   xyPadControl:repaint()\nend\n  \n\n-- Wave envelope key on/off looping\n-- ctl 1,8,9   for key on loop\n-- ctl 3,10,11 for key off loop\n\nfunction setState(valueObject,value)\n   local ctlId = valueObject:getControl():getId()\n   local onOff = 1\n   if (ctlId == 3) then  onOff=2  end\n   \n   if (value == 1) then\n      envLoop[onOff][3] = true\n   else\n      envLoop[onOff][3] = false\n   end\n   xyPadControl:repaint()\nend\n\nfunction setStart(valueObject,value)\n   local ctlId = valueObject:getControl():getId()\n   local onOff = 1\n   if (ctlId == 10) then  onOff=2  end\n\n   envLoop[onOff][1] = value\n   xyPadControl:repaint()\nend\n\n\nfunction setEnd(valueObject,value)\n   local ctlId = valueObject:getControl():getId()\n   local onOff = 1\n   if (ctlId == 11) then  onOff=2  end\n\n   envLoop[onOff][2] = value\n   xyPadControl:repaint()\nend\n\n",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Generic MIDI",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "c679262e-4ca0-4c97-a77c-55df26229cbd",
+      "reference": 4,
+      "slotId": 6,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "F45C51",
+      "name": "Custom X",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 4
+          }
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "45e0a030-1f4c-42ba-9e0e-1bd164f3feef",
+      "reference": 1,
+      "slotId": 54,
+      "type": "pad",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Key On Loop",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 13,
+            "onValue": 127,
+            "offValue": 0
+          },
+          "defaultValue": "off",
+          "function": "setState"
+        }
+      ],
+      "visible": true,
+      "mode": "toggle"
+    },
+    {
+      "id": "f8d0d6c9-1609-44b9-8054-7407597ce5b1",
+      "reference": 8,
+      "slotId": 55,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Start",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 15,
+            "min": 1,
+            "max": 8
+          },
+          "min": 1,
+          "max": 8,
+          "defaultValue": 1,
+          "function": "setStart"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    },
+    {
+      "id": "0b46e714-c99f-4b99-bbca-7a933699d58f",
+      "reference": 9,
+      "slotId": 56,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "End",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 16,
+            "min": 1,
+            "max": 8
+          },
+          "min": 1,
+          "max": 8,
+          "defaultValue": 4,
+          "function": "setEnd"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    },
+    {
+      "id": "676b1ae3-725e-4622-bf32-e3f5bdef1097",
+      "reference": 3,
+      "slotId": 57,
+      "type": "pad",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Key Off Loop",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 14,
+            "onValue": 127,
+            "offValue": 0
+          },
+          "defaultValue": "off",
+          "function": "setState"
+        }
+      ],
+      "visible": true,
+      "mode": "toggle"
+    },
+    {
+      "id": "25b23045-7f57-497f-be62-76bc8af08116",
+      "reference": 10,
+      "slotId": 58,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Start",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 17,
+            "min": 1,
+            "max": 8
+          },
+          "min": 1,
+          "max": 8,
+          "defaultValue": 4,
+          "function": "setStart"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    },
+    {
+      "id": "71655ca6-414d-4b9c-ac05-736b56e6ab3c",
+      "reference": 11,
+      "slotId": 59,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "End",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 18,
+            "min": 1,
+            "max": 8
+          },
+          "min": 1,
+          "max": 8,
+          "defaultValue": 8,
+          "function": "setEnd"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    },
+    {
+      "id": "c8b9b4ce-b41b-4631-9939-12a709a8ef45",
+      "type": "label",
+      "name": "Env Select",
+      "categoryId": "label",
+      "group": "labels",
+      "default": true,
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "parameterNumber": 12
+          }
+        }
+      ],
+      "deviceId": 1,
+      "color": "529DEC",
+      "slotId": 63,
+      "reference": 2,
+      "variant": "highlighted",
+      "span": 1,
+      "vspan": 1
+    },
+    {
+      "id": "f2d82d9e-9953-4240-a004-b1e2b374b947",
+      "reference": 5,
+      "slotId": 66,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Env Stage",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 8,
+            "min": 1,
+            "max": 8
+          },
+          "formatter": "dispDot",
+          "function": "selectStage"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    },
+    {
+      "id": "42985c71-6def-4e4b-af93-bb410420daf5",
+      "reference": 6,
+      "slotId": 67,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Time",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 9,
+            "min": 0,
+            "max": 127
+          },
+          "formatter": "dispX",
+          "function": "adjustTime"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    },
+    {
+      "id": "0c8ca285-6ac5-42c1-b06e-7e0d113f3542",
+      "reference": 7,
+      "slotId": 68,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Level",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 10,
+            "min": 0,
+            "max": 127
+          },
+          "formatter": "dispY",
+          "function": "adjustLevel"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    },
+    {
+      "id": "adc43406-5260-42e1-8aa6-6337c989b8fc",
+      "reference": 12,
+      "slotId": 69,
+      "type": "pad",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Env Select",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 19,
+            "onValue": 127,
+            "offValue": 0
+          },
+          "defaultValue": "on",
+          "function": "selectEnvelope"
+        }
+      ],
+      "visible": true,
+      "mode": "toggle"
+    }
+  ],
+  "pages": [
+    {
+      "id": 1,
+      "name": "Page 1"
+    }
+  ],
+  "categories": [],
+  "firstPageId": 1
+}
