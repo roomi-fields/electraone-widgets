@@ -19,13 +19,14 @@
          padding: .6rem .8rem; font-family: 'SF Mono', Consolas, monospace; font-size: .8rem;
          max-height: 220px; overflow: auto; color: #7ab8ff; white-space: pre-wrap; }
   #log .err { color: #ff7a7a; }
+  #log .info { color: #888; }
 </style>
 </head>
 <body>
   <h1>Electra One Widget Emulator <span style="color:#888;font-weight:normal">— runs Lua widgets in your browser</span></h1>
   <header>
     <label>Widget:
-      <select id="widget-select"></select>
+      <select id="widget-select"><option>loading…</option></select>
     </label>
     <button id="reload">↻ Reload</button>
     <span id="status" style="color:#888;"></span>
@@ -33,12 +34,10 @@
   <div id="stage">
     <canvas id="canvas" width="1016" height="560"></canvas>
   </div>
-  <div id="log">Loading Fengari Lua runtime…</div>
+  <div id="log"><span class="info">Loading Fengari Lua runtime…</span></div>
 
-<script type="module">
-import { lua, lauxlib, lualib, to_luastring, to_jsstring } from "https://unpkg.com/fengari-web@0.1.4/dist/fengari-web.js";
-window.__LUA__ = { lua, lauxlib, lualib, to_luastring, to_jsstring };
-import("./emulator.js").then(m => m.boot());
-</script>
+<!-- UMD bundle exposes window.fengari -->
+<script src="https://unpkg.com/fengari-web@0.1.4/dist/fengari-web.js"></script>
+<script src="./emulator.js"></script>
 </body>
 </html>

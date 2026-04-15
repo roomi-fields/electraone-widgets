@@ -1,57 +1,45 @@
-// Electra One widget emulator — phase 1: xypad-class widgets
-// Runs Lua via Fengari, stubs the Electra runtime (graphics, controls, events).
-// Not a faithful emulator — covers what the curated widgets in this repo actually use.
+// Electra One widget emulator — Fengari + canvas stubs
+// Phase 1: render paint callbacks + touch events.
+
+const RAW_BASE = "https://raw.githubusercontent.com/roomi-fields/electraone-widgets/main";
 
 const CONST = {
-  WIDTH: 2, HEIGHT: 3,         // getBounds returns [x,y,w,h], Lua code reads b[WIDTH]/b[HEIGHT]
+  WIDTH: 2, HEIGHT: 3,
   LEFT: 0, RIGHT: 1, CENTER: 2,
   DOWN: 1, MOVE: 2, UP: 3, CLICK: 4, LONG_HOLD: 5, HOLD: 6,
   PT_CC7: 1, PT_VIRTUAL: 2, PT_NRPN: 3, PT_RPN: 4,
   PORT_1: 1, PORT_2: 2, PORT_CTRL: 3,
   MODEL_MK2: "mk2",
-  // Colors Martin uses in his demos (Component(id, COLOR, ...))
   RED: 0xFF0000, GREEN: 0x00FF00, BLUE: 0x0000FF, YELLOW: 0xFFFF00,
   PURPLE: 0xB14AE0, ORANGE: 0xFF8A1F, WHITE: 0xFFFFFF, BLACK: 0x000000,
 };
-
 const STAGE_W = 1016, STAGE_H = 560;
 
-function logMsg(s, err = false) {
+function logMsg(s, cls = "") {
   const log = document.getElementById("log");
   const line = document.createElement("div");
-  if (err) line.className = "err";
+  if (cls) line.className = cls;
   line.textContent = s;
   log.appendChild(line);
   log.scrollTop = log.scrollHeight;
 }
 
-// ============ Canvas drawing primitives ============
-
 class Stage {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
-    this.controls = {};         // id → Control
-    this.paintCbs = {};         // id → Lua function (paint)
-    this.touchCbs = {};         // id → Lua function
-    this.potCbs   = {};         // id → Lua function
+    this.controls = {};
+    this.paintCbs = {};
+    this.touchCbs = {};
+    this.potCbs = {};
     this.currentColor = 0xFFFFFF;
-    this.currentControl = null;
-    this.dirty = true;
   }
-
-  hexColor(c) {
-    return "#" + ("000000" + (c >>> 0).toString(16)).slice(-6);
-  }
-
+  hexColor(c) { return "#" + ("000000" + (c >>> 0).toString(16)).slice(-6); }
   paintAll() {
     this.ctx.fillStyle = "#000";
     this.ctx.fillRect(0, 0, STAGE_W, STAGE_H);
-    for (const id of Object.keys(this.paintCbs)) {
-      this.paintOne(id);
-    }
+    for (const id of Object.keys(this.paintCbs)) this.paintOne(id);
   }
-
   paintOne(id) {
     const ctrl = this.controls[id];
     const cb = this.paintCbs[id];
@@ -62,42 +50,29 @@ class Stage {
     this.ctx.beginPath();
     this.ctx.rect(0, 0, w, h);
     this.ctx.clip();
-    this.currentControl = ctrl;
-    try {
-      cb(ctrl);
-    } catch (e) {
-      logMsg("paint error: " + e.message, true);
-    }
+    try { cb(ctrl); } catch (e) { logMsg("paint err: " + e.message, "err"); }
     this.ctx.restore();
   }
 }
-
-// ============ Control object (userdata) ============
 
 class Control {
   constructor(id, stage, bounds) {
     this.id = id;
     this.stage = stage;
-    this.bounds = bounds.slice(); // [x,y,w,h]
+    this.bounds = bounds.slice();
     this.value = 0;
   }
   getBounds() {
-    // return a Lua-table-like object that, when indexed with WIDTH/HEIGHT, returns w/h
     const [x, y, w, h] = this.bounds;
-    const arr = { 0: x, 1: y, 2: w, 3: h };
-    // also support .width / .height access
-    arr.width = w; arr.height = h;
-    arr.x = x; arr.y = y;
-    return arr;
+    return { 0: x, 1: y, 2: w, 3: h, x, y, width: w, height: h };
   }
   setBounds(b) {
-    // accept either {1:x,2:y,3:w,4:h} (lua table) or array [x,y,w,h]
+    // accept Lua-array {1:x,2:y,3:w,4:h} or JS-array {0:x,1:y,2:w,3:h} or object
     const x = b[0] ?? b[1] ?? b.x ?? this.bounds[0];
     const y = b[1] ?? b[2] ?? b.y ?? this.bounds[1];
     const w = b[2] ?? b[3] ?? b.width ?? this.bounds[2];
     const h = b[3] ?? b[4] ?? b.height ?? this.bounds[3];
     this.bounds = [x, y, w, h];
-    this.stage.dirty = true;
   }
   setPaintCallback(fn) { this.stage.paintCbs[this.id] = fn; }
   setTouchCallback(fn) { this.stage.touchCbs[this.id] = fn; }
@@ -113,218 +88,73 @@ class Control {
   repaint() { this.stage.paintOne(this.id); }
 }
 
-// ============ Lua environment setup ============
+// ============ Fengari helpers ============
 
-async function loadLua(L, luaCode, stage) {
-  const { lua, lauxlib, to_luastring } = window.__LUA__;
+let F, lua, lauxlib, lualib, to_luastring, to_jsstring;
 
-  // Push constants as globals
-  for (const [k, v] of Object.entries(CONST)) {
-    if (typeof v === "number") lua.lua_pushnumber(L, v);
-    else lua.lua_pushstring(L, to_luastring(v));
-    lua.lua_setglobal(L, to_luastring(k));
-  }
+function initFengari() {
+  if (!window.fengari) throw new Error("Fengari not loaded (check network / CDN)");
+  F = window.fengari;
+  lua = F.lua; lauxlib = F.lauxlib; lualib = F.lualib;
+  to_luastring = F.to_luastring; to_jsstring = F.to_jsstring;
+}
 
-  // graphics module
-  const g = {
-    setColor: (c) => { stage.currentColor = c; stage.ctx.fillStyle = stage.ctx.strokeStyle = stage.hexColor(c); },
-    fillRect: (x, y, w, h) => stage.ctx.fillRect(x, y, w, h),
-    drawRect: (x, y, w, h) => stage.ctx.strokeRect(x, y, w, h),
-    fillCircle: (cx, cy, r) => { stage.ctx.beginPath(); stage.ctx.arc(cx, cy, r, 0, Math.PI * 2); stage.ctx.fill(); },
-    drawCircle: (cx, cy, r) => { stage.ctx.beginPath(); stage.ctx.arc(cx, cy, r, 0, Math.PI * 2); stage.ctx.stroke(); },
-    drawLine: (x1, y1, x2, y2) => { stage.ctx.beginPath(); stage.ctx.moveTo(x1, y1); stage.ctx.lineTo(x2, y2); stage.ctx.stroke(); },
-    print: (x, y, text, size, _align) => {
-      stage.ctx.font = `${size || 10}px 'Open Sans', sans-serif`;
-      stage.ctx.textBaseline = "top";
-      stage.ctx.fillText(String(text ?? ""), x, y);
-    },
-    setPixel: (x, y) => stage.ctx.fillRect(x, y, 1, 1),
-    drawPixel: (x, y) => stage.ctx.fillRect(x, y, 1, 1),
-  };
-  pushJSObject(L, g);
-  lua.lua_setglobal(L, to_luastring("graphics"));
+function pushValue(L, v) {
+  if (v === null || v === undefined) lua.lua_pushnil(L);
+  else if (typeof v === "number") lua.lua_pushnumber(L, v);
+  else if (typeof v === "string") lua.lua_pushstring(L, to_luastring(v));
+  else if (typeof v === "boolean") lua.lua_pushboolean(L, v ? 1 : 0);
+  else if (typeof v === "function") lua.lua_pushjsfunction(L, wrapFn(v));
+  else if (typeof v === "object") pushObject(L, v);
+  else lua.lua_pushnil(L);
+}
 
-  // controls module
-  const controls = {
-    get: (id) => {
-      if (!stage.controls[id]) {
-        // lazy create a full-stage control if not registered
-        stage.controls[id] = new Control(id, stage, [0, 0, STAGE_W, STAGE_H]);
-      }
-      return stage.controls[id];
-    },
-  };
-  pushJSObject(L, controls);
-  lua.lua_setglobal(L, to_luastring("controls"));
-
-  // devices module (stub)
-  const devices = {
-    get: () => ({
-      getPort: () => CONST.PORT_1,
-      getChannel: () => 1,
-      getId: () => 1,
-    }),
-  };
-  pushJSObject(L, devices);
-  lua.lua_setglobal(L, to_luastring("devices"));
-
-  // parameterMap (stub)
-  const parameterMap = {
-    get: () => 0, set: () => {}, send: () => {},
-  };
-  pushJSObject(L, parameterMap);
-  lua.lua_setglobal(L, to_luastring("parameterMap"));
-
-  // midi (stub)
-  const midi = {
-    sendControlChange: () => {}, sendNoteOn: () => {}, sendNoteOff: () => {},
-    sendSysex: () => {}, sendProgramChange: () => {}, sendPitchBend: () => {},
-    onControlChange: null, onNoteOn: null, onNoteOff: null,
-  };
-  pushJSObject(L, midi);
-  lua.lua_setglobal(L, to_luastring("midi"));
-
-  // timer (stub, no-op in phase 1)
-  const timer = {
-    enable: () => {}, disable: () => {}, setPeriod: () => {}, setBpm: () => {},
-    onTick: null,
-  };
-  pushJSObject(L, timer);
-  lua.lua_setglobal(L, to_luastring("timer"));
-
-  // preset (table holding onLoad)
-  lua.lua_createtable(L, 0, 1);
-  lua.lua_setglobal(L, to_luastring("preset"));
-
-  // window (Ephemera-style API)
-  const win = {
-    addAndMakeVisible: () => {}, repaint: () => stage.paintAll(),
-  };
-  pushJSObject(L, win);
-  lua.lua_setglobal(L, to_luastring("window"));
-
-  // print → log
-  lua.lua_pushjsfunction(L, (L) => {
+function wrapFn(fn) {
+  return function (L) {
     const n = lua.lua_gettop(L);
-    const parts = [];
-    for (let i = 1; i <= n; i++) parts.push(luaToJS(L, i));
-    logMsg("[lua] " + parts.join("\t"));
-    return 0;
-  });
-  lua.lua_setglobal(L, to_luastring("print"));
-
-  // controller.isRequired (xt-envelopes) — always pass
-  lua.lua_createtable(L, 0, 1);
-  lua.lua_pushjsfunction(L, (L) => { lua.lua_pushboolean(L, 1); return 1; });
-  lua.lua_setfield(L, -2, to_luastring("isRequired"));
-  lua.lua_setglobal(L, to_luastring("controller"));
-
-  // info (stub)
-  pushJSObject(L, { setText: () => {} });
-  lua.lua_setglobal(L, to_luastring("info"));
-
-  // Load + run Lua
-  const luaBytes = to_luastring(luaCode);
-  const status = lauxlib.luaL_loadbuffer(L, luaBytes, luaBytes.length, to_luastring("=widget"));
-  if (status !== 0) {
-    logMsg("load err: " + to_jsstring(lua.lua_tostring(L, -1)), true);
-    return;
-  }
-  if (lua.lua_pcall(L, 0, 0, 0) !== 0) {
-    logMsg("run err: " + to_jsstring(lua.lua_tostring(L, -1)), true);
-    return;
-  }
-
-  // Call preset.onLoad if defined
-  lua.lua_getglobal(L, to_luastring("preset"));
-  lua.lua_getfield(L, -1, to_luastring("onLoad"));
-  if (lua.lua_isfunction(L, -1)) {
-    if (lua.lua_pcall(L, 0, 0, 0) !== 0) {
-      logMsg("onLoad err: " + to_jsstring(lua.lua_tostring(L, -1)), true);
-    }
-  } else {
-    lua.lua_pop(L, 1);
-  }
-  lua.lua_pop(L, 1);
+    const args = [];
+    for (let i = 1; i <= n; i++) args.push(luaToJS(L, i));
+    let ret;
+    try { ret = fn.apply(null, args); }
+    catch (e) { logMsg("stub err: " + e.message, "err"); return 0; }
+    if (ret === undefined || ret === null) return 0;
+    pushValue(L, ret);
+    return 1;
+  };
 }
 
-// Helper: convert a Lua value at stack index to a JS value
-function luaToJS(L, i) {
-  const { lua, to_jsstring } = window.__LUA__;
-  const t = lua.lua_type(L, i);
-  if (t === lua.LUA_TSTRING)  return to_jsstring(lua.lua_tostring(L, i));
-  if (t === lua.LUA_TNUMBER)  return lua.lua_tonumber(L, i);
-  if (t === lua.LUA_TBOOLEAN) return Boolean(lua.lua_toboolean(L, i));
-  if (t === lua.LUA_TNIL)     return null;
-  return "<" + lua.lua_typename(L, t) + ">";
-}
-
-// Helper: push a JS object as a Lua table (functions become Lua functions)
-function pushJSObject(L, obj) {
-  const { lua, to_luastring } = window.__LUA__;
+function pushObject(L, obj) {
+  // Plain map/module as Lua table
   lua.lua_createtable(L, 0, Object.keys(obj).length);
   for (const [k, v] of Object.entries(obj)) {
-    if (typeof v === "function") {
-      lua.lua_pushjsfunction(L, (L) => {
-        const n = lua.lua_gettop(L);
-        const args = [];
-        for (let i = 1; i <= n; i++) args.push(luaToJSAny(L, i));
-        const ret = v.apply(null, args);
-        if (ret === undefined || ret === null) return 0;
-        pushJSValue(L, ret);
-        return 1;
-      });
-    } else if (typeof v === "number") {
-      lua.lua_pushnumber(L, v);
-    } else if (typeof v === "string") {
-      lua.lua_pushstring(L, to_luastring(v));
-    } else if (typeof v === "boolean") {
-      lua.lua_pushboolean(L, v ? 1 : 0);
-    } else if (v && typeof v === "object") {
-      pushJSObject(L, v);
-    } else {
-      lua.lua_pushnil(L);
-    }
+    pushValue(L, v);
     lua.lua_setfield(L, -2, to_luastring(k));
   }
 }
 
-function pushJSValue(L, v) {
-  const { lua, to_luastring } = window.__LUA__;
-  if (typeof v === "number") lua.lua_pushnumber(L, v);
-  else if (typeof v === "string") lua.lua_pushstring(L, to_luastring(v));
-  else if (typeof v === "boolean") lua.lua_pushboolean(L, v ? 1 : 0);
-  else if (v && typeof v === "object") pushUserdata(L, v);
-  else lua.lua_pushnil(L);
-}
-
-// Wrap a JS object as Lua userdata with metatable providing method access
-function pushUserdata(L, obj) {
-  const { lua, to_luastring } = window.__LUA__;
-  // Simple approach: push as a table with methods
+// Wrap a JS object with methods as Lua userdata (colon-call semantics)
+function pushJSAsLua(L, obj) {
   lua.lua_createtable(L, 0, 0);
   const tableIdx = lua.lua_gettop(L);
-
-  // Metatable with __index that calls methods on the JS object
   lua.lua_createtable(L, 0, 1);
   lua.lua_pushjsfunction(L, (L) => {
     const key = to_jsstring(lua.lua_tostring(L, 2));
-    if (typeof obj[key] === "function") {
+    const v = obj[key];
+    if (typeof v === "function") {
       lua.lua_pushjsfunction(L, (L) => {
         const n = lua.lua_gettop(L);
         const args = [];
-        for (let i = 2; i <= n; i++) args.push(luaToJSAny(L, i));   // skip `self` (arg 1)
-        const ret = obj[key].apply(obj, args);
+        for (let i = 2; i <= n; i++) args.push(luaToJS(L, i));  // skip self
+        let ret;
+        try { ret = v.apply(obj, args); }
+        catch (e) { logMsg(`method err ${key}: ${e.message}`, "err"); return 0; }
         if (ret === undefined || ret === null) return 0;
-        pushJSValue(L, ret);
+        pushValue(L, ret);
         return 1;
       });
       return 1;
     }
-    if (key in obj) {
-      pushJSValue(L, obj[key]);
-      return 1;
-    }
+    if (v !== undefined) { pushValue(L, v); return 1; }
     lua.lua_pushnil(L);
     return 1;
   });
@@ -332,71 +162,199 @@ function pushUserdata(L, obj) {
   lua.lua_setmetatable(L, tableIdx);
 }
 
-// Convert Lua value to any JS value (including tables as arrays/objects)
-function luaToJSAny(L, i) {
-  const { lua, to_jsstring } = window.__LUA__;
+function luaToJS(L, i) {
   const t = lua.lua_type(L, i);
-  if (t === lua.LUA_TSTRING)  return to_jsstring(lua.lua_tostring(L, i));
-  if (t === lua.LUA_TNUMBER)  return lua.lua_tonumber(L, i);
-  if (t === lua.LUA_TBOOLEAN) return Boolean(lua.lua_toboolean(L, i));
-  if (t === lua.LUA_TNIL)     return null;
+  if (t === lua.LUA_TSTRING)   return to_jsstring(lua.lua_tostring(L, i));
+  if (t === lua.LUA_TNUMBER)   return lua.lua_tonumber(L, i);
+  if (t === lua.LUA_TBOOLEAN)  return Boolean(lua.lua_toboolean(L, i));
+  if (t === lua.LUA_TNIL)      return null;
+  if (t === lua.LUA_TFUNCTION) {
+    const ref = lauxlib.luaL_ref(L, lua.LUA_REGISTRYINDEX);
+    return function (...args) {
+      lua.lua_rawgeti(L, lua.LUA_REGISTRYINDEX, ref);
+      for (const a of args) pushValue(L, a);
+      if (lua.lua_pcall(L, args.length, 0, 0) !== 0) {
+        logMsg("cb err: " + to_jsstring(lua.lua_tostring(L, -1)), "err");
+        lua.lua_pop(L, 1);
+      }
+    };
+  }
   if (t === lua.LUA_TTABLE) {
-    // Convert table to JS object, handling 1-based arrays
     const obj = {};
     lua.lua_pushnil(L);
     const abs = lua.lua_absindex(L, i);
     while (lua.lua_next(L, abs) !== 0) {
-      const k = luaToJSAny(L, -2);
-      const v = luaToJSAny(L, -1);
+      const k = luaToJS(L, -2);
+      const v = luaToJS(L, -1);
       obj[k] = v;
       lua.lua_pop(L, 1);
     }
     return obj;
   }
-  if (t === lua.LUA_TFUNCTION) {
-    // Return a JS callable that invokes the Lua function
-    const ref = lauxlib.luaL_ref(L, lua.LUA_REGISTRYINDEX);
-    return function (...args) {
-      lua.lua_rawgeti(L, lua.LUA_REGISTRYINDEX, ref);
-      for (const a of args) pushJSValue(L, a);
-      if (lua.lua_pcall(L, args.length, 0, 0) !== 0) {
-        logMsg("cb err: " + to_jsstring(lua.lua_tostring(L, -1)), true);
-        lua.lua_pop(L, 1);
-      }
-    };
-  }
+  // userdata / other
   return null;
 }
 
-// ============ Widget loader ============
+// ============ Environment ============
 
-async function fetchText(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`${url}: ${r.status}`);
-  return r.text();
+function setupEnv(L, stage) {
+  // constants
+  for (const [k, v] of Object.entries(CONST)) {
+    if (typeof v === "number") lua.lua_pushnumber(L, v);
+    else lua.lua_pushstring(L, to_luastring(v));
+    lua.lua_setglobal(L, to_luastring(k));
+  }
+
+  // graphics
+  pushObject(L, {
+    setColor: (c) => { stage.currentColor = c; const col = stage.hexColor(c); stage.ctx.fillStyle = col; stage.ctx.strokeStyle = col; },
+    fillRect: (x, y, w, h) => stage.ctx.fillRect(x, y, w, h),
+    drawRect: (x, y, w, h) => stage.ctx.strokeRect(x, y, w, h),
+    fillCircle: (cx, cy, r) => { stage.ctx.beginPath(); stage.ctx.arc(cx, cy, r, 0, Math.PI * 2); stage.ctx.fill(); },
+    drawCircle: (cx, cy, r) => { stage.ctx.beginPath(); stage.ctx.arc(cx, cy, r, 0, Math.PI * 2); stage.ctx.stroke(); },
+    drawLine: (x1, y1, x2, y2) => { stage.ctx.beginPath(); stage.ctx.moveTo(x1, y1); stage.ctx.lineTo(x2, y2); stage.ctx.stroke(); },
+    print: (x, y, text, size) => {
+      stage.ctx.font = `${size || 10}px 'Open Sans', sans-serif`;
+      stage.ctx.textBaseline = "top";
+      stage.ctx.fillText(String(text ?? ""), x, y);
+    },
+    setPixel: (x, y) => stage.ctx.fillRect(x, y, 1, 1),
+    drawPixel: (x, y) => stage.ctx.fillRect(x, y, 1, 1),
+  });
+  lua.lua_setglobal(L, to_luastring("graphics"));
+
+  // controls
+  const controls = {
+    get: (id) => {
+      if (!stage.controls[id]) stage.controls[id] = new Control(id, stage, [0, 0, STAGE_W, STAGE_H]);
+      return stage.controls[id];
+    },
+  };
+  lua.lua_createtable(L, 0, 1);
+  lua.lua_pushjsfunction(L, (L) => {
+    const id = lua.lua_tonumber(L, 1);
+    pushJSAsLua(L, controls.get(id));
+    return 1;
+  });
+  lua.lua_setfield(L, -2, to_luastring("get"));
+  lua.lua_setglobal(L, to_luastring("controls"));
+
+  // devices
+  const fakeDevice = { getPort: () => CONST.PORT_1, getChannel: () => 1, getId: () => 1 };
+  lua.lua_createtable(L, 0, 1);
+  lua.lua_pushjsfunction(L, (L) => { pushJSAsLua(L, fakeDevice); return 1; });
+  lua.lua_setfield(L, -2, to_luastring("get"));
+  lua.lua_setglobal(L, to_luastring("devices"));
+
+  // parameterMap, midi, timer — stubs
+  pushObject(L, { get: () => 0, set: () => {}, send: () => {} });
+  lua.lua_setglobal(L, to_luastring("parameterMap"));
+  pushObject(L, {
+    sendControlChange: () => {}, sendNoteOn: () => {}, sendNoteOff: () => {},
+    sendSysex: () => {}, sendProgramChange: () => {}, sendPitchBend: () => {},
+    sendControlChange14Bit: () => {}, sendNrpn: () => {}, sendRpn: () => {},
+    sendAfterTouchChannel: () => {}, sendAfterTouchPoly: () => {},
+    sendClock: () => {}, sendStart: () => {}, sendStop: () => {},
+  });
+  lua.lua_setglobal(L, to_luastring("midi"));
+  pushObject(L, { enable: () => {}, disable: () => {}, setPeriod: () => {}, setBpm: () => {} });
+  lua.lua_setglobal(L, to_luastring("timer"));
+
+  // preset table
+  lua.lua_createtable(L, 0, 0);
+  lua.lua_setglobal(L, to_luastring("preset"));
+
+  // window (Ephemera-style) - re-paints the whole stage
+  pushObject(L, { addAndMakeVisible: () => {}, repaint: () => stage.paintAll() });
+  lua.lua_setglobal(L, to_luastring("window"));
+
+  // Component constructor (Ephemera)
+  lua.lua_pushjsfunction(L, (L) => {
+    const id = lua.lua_tonumber(L, 1);
+    // args: id, color, label, bounds{x,y,width,height}
+    const bt = luaToJS(L, 4) || { x: 0, y: 0, width: 100, height: 100 };
+    const ctrl = new Control(id, stage, [bt.x || 0, bt.y || 0, bt.width || 100, bt.height || 100]);
+    stage.controls[id] = ctrl;
+    pushJSAsLua(L, ctrl);
+    return 1;
+  });
+  lua.lua_setglobal(L, to_luastring("Component"));
+
+  // controller.isRequired
+  lua.lua_createtable(L, 0, 1);
+  lua.lua_pushjsfunction(L, (L) => { lua.lua_pushboolean(L, 1); return 1; });
+  lua.lua_setfield(L, -2, to_luastring("isRequired"));
+  lua.lua_setglobal(L, to_luastring("controller"));
+
+  // info
+  pushObject(L, { setText: () => {} });
+  lua.lua_setglobal(L, to_luastring("info"));
+
+  // print → log
+  lua.lua_pushjsfunction(L, (L) => {
+    const n = lua.lua_gettop(L);
+    const parts = [];
+    for (let i = 1; i <= n; i++) parts.push(luaToJS(L, i));
+    logMsg("[lua] " + parts.join("\t"), "info");
+    return 0;
+  });
+  lua.lua_setglobal(L, to_luastring("print"));
+}
+
+async function runLua(L, code) {
+  const buf = to_luastring(code);
+  if (lauxlib.luaL_loadbuffer(L, buf, buf.length, to_luastring("=widget")) !== 0) {
+    logMsg("load err: " + to_jsstring(lua.lua_tostring(L, -1)), "err");
+    lua.lua_pop(L, 1);
+    return;
+  }
+  if (lua.lua_pcall(L, 0, 0, 0) !== 0) {
+    logMsg("run err: " + to_jsstring(lua.lua_tostring(L, -1)), "err");
+    lua.lua_pop(L, 1);
+    return;
+  }
+  // Call preset.onLoad
+  lua.lua_getglobal(L, to_luastring("preset"));
+  lua.lua_getfield(L, -1, to_luastring("onLoad"));
+  if (lua.lua_isfunction(L, -1)) {
+    if (lua.lua_pcall(L, 0, 0, 0) !== 0) {
+      logMsg("onLoad err: " + to_jsstring(lua.lua_tostring(L, -1)), "err");
+      lua.lua_pop(L, 1);
+    }
+  } else {
+    lua.lua_pop(L, 1);
+  }
+  lua.lua_pop(L, 1);
 }
 
 async function loadWidget(slug) {
-  const log = document.getElementById("log");
-  log.innerHTML = "";
-  logMsg(`Loading widget: ${slug}`);
+  document.getElementById("log").innerHTML = "";
+  logMsg(`Loading widget: ${slug}`, "info");
+  document.getElementById("status").textContent = "…";
 
   const canvas = document.getElementById("canvas");
   const stage = new Stage(canvas);
 
-  // Register tile 1 at full screen by default (most custom widgets use ref=1 and setBounds)
-  stage.controls[1] = new Control(1, stage, [0, 0, STAGE_W, STAGE_H]);
-  stage.controls[4] = new Control(4, stage, [0, 0, STAGE_W, STAGE_H]);
-  stage.controls[5] = new Control(5, stage, [0, 0, STAGE_W, STAGE_H]);
+  // Pre-seed a few common control refs full-screen
+  for (const id of [1, 4, 5]) stage.controls[id] = new Control(id, stage, [0, 0, STAGE_W, STAGE_H]);
 
-  const lua = await fetchText(`../../widgets/${slug}/widget.lua`);
+  let code;
+  try {
+    code = await (await fetch(`${RAW_BASE}/widgets/${slug}/widget.lua`)).text();
+  } catch (e) {
+    logMsg("fetch lua err: " + e.message, "err");
+    return;
+  }
+  // Strip attribution header comments (purely cosmetic)
+  // (Lua handles -- comments natively, no need to strip)
 
   const L = lauxlib.luaL_newstate();
   lualib.luaL_openlibs(L);
-  await loadLua(L, lua, stage);
+  setupEnv(L, stage);
+  await runLua(L, code);
   stage.paintAll();
 
-  // Wire touch
+  // Pointer → touch
   const toStage = (ev) => {
     const r = canvas.getBoundingClientRect();
     const sx = STAGE_W / r.width, sy = STAGE_H / r.height;
@@ -405,34 +363,40 @@ async function loadWidget(slug) {
       y: Math.max(0, Math.min(STAGE_H, (ev.clientY - r.top) * sy)),
     };
   };
-  const dispatchTouch = (type, pt) => {
+  const dispatch = (type, pt) => {
     for (const [id, cb] of Object.entries(stage.touchCbs)) {
       const ctrl = stage.controls[id];
       if (!ctrl) continue;
       const [x, y, w, h] = ctrl.bounds;
       if (pt.x >= x && pt.x < x + w && pt.y >= y && pt.y < y + h) {
-        try {
-          cb(ctrl, { type, x: pt.x - x, y: pt.y - y });
-        } catch (e) { logMsg("touch err: " + e.message, true); }
+        try { cb(ctrl, { type, x: pt.x - x, y: pt.y - y }); }
+        catch (e) { logMsg("touch err: " + e.message, "err"); }
       }
     }
   };
   let dragging = false;
-  canvas.addEventListener("pointerdown", (ev) => { dragging = true; dispatchTouch(CONST.DOWN, toStage(ev)); });
-  canvas.addEventListener("pointermove", (ev) => { if (dragging) dispatchTouch(CONST.MOVE, toStage(ev)); });
-  canvas.addEventListener("pointerup",   (ev) => { dragging = false; dispatchTouch(CONST.UP, toStage(ev)); });
+  canvas.addEventListener("pointerdown", (ev) => { ev.preventDefault(); dragging = true; dispatch(CONST.DOWN, toStage(ev)); });
+  canvas.addEventListener("pointermove", (ev) => { if (dragging) dispatch(CONST.MOVE, toStage(ev)); });
+  canvas.addEventListener("pointerup",   (ev) => { dragging = false; dispatch(CONST.UP, toStage(ev)); });
+  canvas.addEventListener("pointerleave",(ev) => { if (dragging) { dragging = false; dispatch(CONST.UP, toStage(ev)); } });
 
   document.getElementById("status").textContent = "✓ running";
 }
 
-// ============ Boot ============
+async function boot() {
+  try { initFengari(); }
+  catch (e) { logMsg(e.message, "err"); return; }
+  logMsg("Fengari loaded.", "info");
 
-const { lua, lauxlib, lualib, to_luastring, to_jsstring } = {};
-
-export async function boot() {
-  // Populate widget dropdown from widgets.json
-  const ws = await (await fetch("../widgets.json")).json();
+  // populate widgets
+  let ws = [];
+  try {
+    ws = await (await fetch("../widgets.json")).json();
+  } catch (e) {
+    logMsg("widgets.json fetch err: " + e.message, "err");
+  }
   const sel = document.getElementById("widget-select");
+  sel.innerHTML = "";
   ws.forEach(w => {
     const o = document.createElement("option");
     o.value = w.slug;
@@ -444,8 +408,12 @@ export async function boot() {
   sel.addEventListener("change", () => { location.search = "?w=" + sel.value; });
   document.getElementById("reload").addEventListener("click", () => location.reload());
 
-  // Expose deps for emulator module
-  Object.assign(window, window.__LUA__);
-
   await loadWidget(sel.value || "xypad");
+}
+
+// Boot when both Fengari UMD and this file are ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot);
+} else {
+  boot();
 }
