@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Electra One Widget Emulator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0e0e11; color: #e6e6e6; font-family: system-ui, sans-serif; padding: 1.5rem; }
+  h1 { font-size: 1.2rem; margin-bottom: 1rem; }
+  header { display: flex; gap: .8rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+  select, button { background: #1a1a22; color: #eee; border: 1px solid #333; border-radius: 6px; padding: .4rem .8rem; font: inherit; }
+  button:hover { border-color: #5a5a7a; cursor: pointer; }
+  #stage { background: #000; border: 1px solid #222; border-radius: 8px;
+           width: 1016px; height: 560px; max-width: 100%; aspect-ratio: 1016/560; position: relative; touch-action: none; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #log { margin-top: 1rem; background: #111; border: 1px solid #222; border-radius: 6px;
+         padding: .6rem .8rem; font-family: 'SF Mono', Consolas, monospace; font-size: .8rem;
+         max-height: 220px; overflow: auto; color: #7ab8ff; white-space: pre-wrap; }
+  #log .err { color: #ff7a7a; }
+</style>
+</head>
+<body>
+  <h1>Electra One Widget Emulator <span style="color:#888;font-weight:normal">— runs Lua widgets in your browser</span></h1>
+  <header>
+    <label>Widget:
+      <select id="widget-select"></select>
+    </label>
+    <button id="reload">↻ Reload</button>
+    <span id="status" style="color:#888;"></span>
+  </header>
+  <div id="stage">
+    <canvas id="canvas" width="1016" height="560"></canvas>
+  </div>
+  <div id="log">Loading Fengari Lua runtime…</div>
+
+<script type="module">
+import { lua, lauxlib, lualib, to_luastring, to_jsstring } from "https://unpkg.com/fengari-web@0.1.4/dist/fengari-web.js";
+window.__LUA__ = { lua, lauxlib, lualib, to_luastring, to_jsstring };
+import("./emulator.js").then(m => m.boot());
+</script>
+</body>
+</html>
