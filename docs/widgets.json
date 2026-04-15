@@ -1,0 +1,7 @@
+[
+  {
+    "slug": "xypad",
+    "name": "XY Pad",
+    "description": "Two-axis touch pad sending two normalized values. Wire to any MIDI messages."
+  }
+]

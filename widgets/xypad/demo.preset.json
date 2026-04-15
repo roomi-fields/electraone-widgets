@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "name": "XYPad Demo",
+  "projectId": "xypad-demo",
+  "pages": [{ "id": 1, "name": "XY" }],
+  "groups": [],
+  "devices": [{ "id": 1, "name": "Target", "port": 1, "channel": 1 }],
+  "overlays": [],
+  "controls": [
+    {
+      "id": 1,
+      "name": "XY",
+      "type": "pad",
+      "pageId": 1,
+      "controlSetId": 1,
+      "bounds": [0, 0, 1016, 560],
+      "mode": "toggle"
+    }
+  ]
+}
