@@ -9,7 +9,7 @@
     "slug": "ephemera-sequencer",
     "name": "Ephemera Sequencer",
     "description": "A proof-of-concept **1-track, 16-step melodic sequencer** running on Electra One's standalone Lua firmware. Touch or knobs to edit notes, hardware buttons for transport.",
-    "previewExt": "jpg"
+    "previewExt": "svg"
   },
   {
     "slug": "xt-envelopes",

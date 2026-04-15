@@ -2,7 +2,7 @@
   <!-- Electra One MK2 display (1016×560), full-screen XY Pad tile -->
 
   <!-- background (tile bg = 0x202020) -->
-  <rect x="0" y="0" width="1016" height="560" fill="#202020"/>
+  <rect x="0" y="0" width="1016" height="560" fill="#000000"/>
 
   <!-- crosshair grid (0x404040) -->
   <line x1="508" y1="0"   x2="508" y2="560" stroke="#404040" stroke-width="2"/>
