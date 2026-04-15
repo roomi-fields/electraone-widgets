@@ -605,6 +605,14 @@ function fireParameterChange(stage, tile, midiValue) {
 
 function createNativeTileOverlays(stage) {
   const stageEl = document.getElementById("stage");
+  // SVG viewBox dictates the coordinate space for tile bounds — read it so
+  // overlays land on the right pixels for non-MK2 layouts (mini = 800x440).
+  const svgEl = document.querySelector("#svg-layer svg");
+  let vbW = STAGE_W, vbH = STAGE_H;
+  if (svgEl && svgEl.getAttribute("viewBox")) {
+    const [, , w, h] = svgEl.getAttribute("viewBox").split(/\s+/).map(Number);
+    if (w > 0 && h > 0) { vbW = w; vbH = h; }
+  }
   for (const tile of stage.nativeTiles) {
     if (!tile.ref || !tile.el) continue;
     if (tile.type !== "fader" && tile.type !== "pad" && tile.type !== "list") continue;
@@ -615,7 +623,9 @@ function createNativeTileOverlays(stage) {
     // Derive initial value from the SVG's current visual state (so drag from
     // initial position grows/shrinks the actual bar consistently).
     if (stage.tileValues[tile.ref] === undefined) {
-      if (tile.type === "fader" && tile.valueEl) {
+      if (tile.variant === "dial") {
+        stage.tileValues[tile.ref] = tile.msgMin ?? 0;
+      } else if (tile.type === "fader" && tile.valueEl) {
         const curW = parseFloat(tile.valueEl.getAttribute("width") || 0);
         const maxW = parseFloat(tile.valueEl.dataset.maxW || curW);
         stage.tileValues[tile.ref] = maxW > 0 ? Math.round(127 * curW / maxW) : 64;
@@ -635,10 +645,10 @@ function createNativeTileOverlays(stage) {
     el.title = `${tile.type} ref=${tile.ref} ${tile.name || ""}`;
     Object.assign(el.style, {
       position: "absolute",
-      left:   (x / 1016 * 100) + "%",
-      top:    (y / 560  * 100) + "%",
-      width:  (w / 1016 * 100) + "%",
-      height: (h / 560  * 100) + "%",
+      left:   (x / vbW * 100) + "%",
+      top:    (y / vbH * 100) + "%",
+      width:  (w / vbW * 100) + "%",
+      height: (h / vbH * 100) + "%",
       cursor: tile.type === "fader" ? "ns-resize" : "pointer",
       zIndex: "2",
       background: "transparent",
@@ -695,6 +705,23 @@ function createNativeTileOverlays(stage) {
 
 // Find the element inside the tile that represents the value (the part to animate)
 function findValueElement(tile) {
+  if (tile.variant === "dial") {
+    // The active arc is an empty <path stroke="..." fill="none"> sibling of
+    // the background circle. Stash the dial geometry on the element for
+    // updateTileVisual to reconstruct the arc d="…".
+    const paths = Array.from(tile.el.querySelectorAll("path"));
+    const arc = paths.find(p =>
+      (p.getAttribute("fill") || "none") === "none" &&
+      p.getAttribute("stroke") &&
+      !p.getAttribute("d"));
+    const bg = tile.el.querySelector("circle");
+    if (arc && bg) {
+      arc.dataset.cx = bg.getAttribute("cx");
+      arc.dataset.cy = bg.getAttribute("cy");
+      arc.dataset.r  = String(parseFloat(bg.getAttribute("r")) + 2);  // arc just outside bg
+    }
+    return arc || null;
+  }
   if (tile.type === "fader") {
     // Exclude rects inside <defs> / <clipPath> (those aren't the value bar).
     // Track rect has fill-opacity="0.2"; value bar has no fill-opacity + a real fill.
@@ -723,6 +750,22 @@ function findValueElement(tile) {
 
 function updateTileVisual(tile, value) {
   if (!tile.valueEl) return;
+  if (tile.variant === "dial") {
+    const cx = parseFloat(tile.valueEl.dataset.cx);
+    const cy = parseFloat(tile.valueEl.dataset.cy);
+    const r  = parseFloat(tile.valueEl.dataset.r);
+    if (!isFinite(cx) || !isFinite(cy) || !isFinite(r)) return;
+    const lo = tile.msgMin ?? 0, hi = tile.msgMax ?? 127;
+    const ratio = hi > lo ? Math.max(0, Math.min(1, (value - lo) / (hi - lo))) : 0;
+    // Sweep -135° → +135° (270° total). 0° = top, clockwise positive.
+    const a0 = -135 * Math.PI / 180;
+    const a1 = a0 + ratio * 270 * Math.PI / 180;
+    const sx = cx + r * Math.sin(a0), sy = cy - r * Math.cos(a0);
+    const ex = cx + r * Math.sin(a1), ey = cy - r * Math.cos(a1);
+    const large = ratio * 270 > 180 ? 1 : 0;
+    tile.valueEl.setAttribute("d", `M ${sx} ${sy} A ${r} ${r} 0 ${large} 1 ${ex} ${ey}`);
+    return;
+  }
   if (tile.type === "fader") {
     const maxW = parseFloat(tile.valueEl.dataset.maxW || tile.valueEl.getAttribute("width") || 0);
     const lo = tile.msgMin ?? 0;
@@ -832,7 +875,8 @@ async function loadWidget(slug) {
     svgLayer.querySelectorAll("g[type][bounds]").forEach(g => {
       const [x, y, w, h] = g.getAttribute("bounds").split(",").map(Number);
       const type = g.getAttribute("type");
-      tiles.push({ type, bounds: [x, y, w, h], el: g });
+      const variant = g.getAttribute("variant") || null;  // "dial", "fader", etc.
+      tiles.push({ type, variant, bounds: [x, y, w, h], el: g });
     });
 
     // Match SVG tiles to preset tiles. For each SVG tile, consume the next
