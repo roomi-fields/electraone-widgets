@@ -68,7 +68,10 @@ class ValueObject {
   getMax() { return this._max; }
   setValue(v) { this._value = v; }
   getValue() { return this._value; }
-  getMessage() { return new MessageObject(); }
+  getMessage() {
+    if (!this._message) this._message = new MessageObject(this._tile);
+    return this._message;
+  }
   getControl() { return null; }
   setDefault(v) { this._default = v; }
   setLabel() {}
@@ -78,16 +81,19 @@ class ValueObject {
   getId() { return 0; }
 }
 class MessageObject {
-  getValue() { return 0; }
+  constructor(tile) { this._tile = tile || null; }
+  getValue() { return this._tile ? (this._tile._lastValue ?? 0) : 0; }
   setValue() {}
-  getParameterNumber() { return 0; }
+  getParameterNumber() { return this._tile ? (this._tile.msgParam ?? 0) : 0; }
   getDeviceId() { return 1; }
-  getType() { return "cc7"; }
-  getMin() { return 0; }
-  getMax() { return 127; }
-  getOnValue() { return 127; }
-  getOffValue() { return 0; }
-  setMin() {} setMax() {} setParameterNumber() {} setDeviceId() {}
+  getType() { return this._tile ? (this._tile.msgType ?? "cc7") : "cc7"; }
+  getMin() { return this._tile ? (this._tile.msgMin ?? 0) : 0; }
+  getMax() { return this._tile ? (this._tile.msgMax ?? 127) : 127; }
+  getOnValue() { return this._tile ? (this._tile.msgOn ?? 127) : 127; }
+  getOffValue() { return this._tile ? (this._tile.msgOff ?? 0) : 0; }
+  setMin() {} setMax() {}
+  setParameterNumber(cc) { if (this._tile) this._tile.msgParam = cc; }
+  setDeviceId() {}
 }
 
 class Control {
@@ -101,9 +107,13 @@ class Control {
     this._values = {}; // id → ValueObject
   }
   getBounds() {
-    // Lua 1-based: bounds[1]=x, [2]=y, [3]=w, [4]=h
+    // Return a real JS Array (1-based in Lua via sparse indices) so pushObject
+    // treats it as a native Lua table (iterable by lua_next, passable back through
+    // luaToJS intact). WIDTH/HEIGHT constants (3, 4) index into it.
     const [x, y, w, h] = this.bounds;
-    return { 1: x, 2: y, 3: w, 4: h, x, y, width: w, height: h };
+    const a = [];
+    a[1] = x; a[2] = y; a[3] = w; a[4] = h;
+    return a;
   }
   setBounds(b) {
     let x, y, w, h;
@@ -120,7 +130,11 @@ class Control {
   setValue(v) { this.value = v; }
   getValue(id) {
     const key = id ?? "value";
-    if (!this._values[key]) this._values[key] = new ValueObject();
+    if (!this._values[key]) {
+      const vo = new ValueObject();
+      vo._tile = this.tile || null;  // link for message:setParameterNumber to write back
+      this._values[key] = vo;
+    }
     return this._values[key];
   }
   setColor() {} setLabel() {} setName() {} setVisible() {} setSlot() {}
@@ -190,14 +204,14 @@ function pushValue(L, v) {
   else if (typeof v === "boolean") lua.lua_pushboolean(L, v ? 1 : 0);
   else if (typeof v === "function") lua.lua_pushjsfunction(L, wrapFn(v));
   else if (typeof v === "object") {
-    // Any object that has at least one method gets the proxy treatment so
-    // methods work over colon-call. Pure data tables (no functions) stay flat.
-    if (v.constructor && v.constructor !== Object) {
-      pushJSAsLua(L, v);    // class instance
-    } else if (Object.values(v).some(val => typeof val === "function")) {
-      pushJSAsLua(L, v);    // plain object but has methods
+    // Always use proxy for objects so mutations to nested fields persist.
+    // Arrays stay arrays (we need raw Lua-table semantics for ipairs / #),
+    // but class instances and plain objects both go through pushJSAsLua so
+    // `obj.nested.x = v` writes back to the original JS object.
+    if (Array.isArray(v)) {
+      pushObject(L, v);
     } else {
-      pushObject(L, v);     // pure data
+      pushJSAsLua(L, v);
     }
   }
   else lua.lua_pushnil(L);
@@ -253,8 +267,16 @@ function pushJSAsLua(L, obj) {
   // __index
   lua.lua_pushjsfunction(L, (L) => {
     let key;
-    try { key = to_jsstring(lua.lua_tostring(L, 2)); }
-    catch (e) { console.error("[__index] key conv:", e, "type=", lua.lua_type(L, 2)); return 0; }
+    try {
+      const kt = lua.lua_type(L, 2);
+      if (kt === lua.LUA_TNUMBER) {
+        key = lua.lua_tonumber(L, 2);
+      } else {
+        const s = lua.lua_tostring(L, 2);
+        key = s ? to_jsstring(s) : null;
+      }
+    } catch (e) { console.error("[__index] key conv:", e); return 0; }
+    if (key === null || key === undefined) { lua.lua_pushnil(L); return 1; }
     const v = obj[key];
     // User-added Lua function: push raw Lua function so colon-calls preserve self
     if (v && typeof v === "object" && v._luaRef !== undefined) {
@@ -293,7 +315,13 @@ function pushJSAsLua(L, obj) {
         const ref = lauxlib.luaL_ref(L, lua.LUA_REGISTRYINDEX);
         obj[key] = { _luaRef: ref };
       } else {
-        obj[key] = luaToJS(L, 3);
+        const val = luaToJS(L, 3);
+        obj[key] = val;
+        if (window.__DIAG_NEWINDEX) {
+          const tag = obj.constructor && obj.constructor.name !== "Object" ? obj.constructor.name : "obj";
+          const preview = typeof val === "object" && val ? `{${Object.keys(val).length}}` : JSON.stringify(val);
+          console.log(`[__newindex ${tag}] ${key} = ${preview}`);
+        }
       }
       return 0;
     } catch (e) {
@@ -416,8 +444,22 @@ function setupEnv(L, stage) {
   lua.lua_setfield(L, -2, to_luastring("get"));
   lua.lua_setglobal(L, to_luastring("devices"));
 
-  // parameterMap, midi, timer — stubs
-  pushObject(L, { get: () => 0, set: () => {}, send: () => {} });
+  // parameterMap — routes set(deviceId, type, paramNum, value) to any tile
+  // whose MIDI message matches, so values written by the widget's Lua logic
+  // (e.g. cube-lfo's outbound CCs) are reflected visually on the native tiles.
+  pushObject(L, {
+    get: () => 0,
+    set: (_deviceId, type, paramNum, value) => {
+      if (!stage.nativeTiles) return;
+      for (const tile of stage.nativeTiles) {
+        if (tile.msgType === type && tile.msgParam === paramNum) {
+          stage.tileValues[tile.ref] = value;
+          updateTileVisual(tile, value);
+        }
+      }
+    },
+    send: () => {},
+  });
   lua.lua_setglobal(L, to_luastring("parameterMap"));
   pushObject(L, {
     sendControlChange: () => {}, sendNoteOn: () => {}, sendNoteOff: () => {},
@@ -508,44 +550,54 @@ function setupEnv(L, stage) {
 
 // ============ Native tile interactivity ============
 
-function fireParameterChange(stage, ref, midiValue) {
+function fireParameterChange(stage, tile, midiValue) {
   const L = stage.L;
   if (!L) return;
   lua.lua_getglobal(L, to_luastring("parameterMap"));
   lua.lua_getfield(L, -1, to_luastring("onChange"));
   if (!lua.lua_isfunction(L, -1)) { lua.lua_pop(L, 2); return; }
-  // arg1: valueObjects array {1: valueObject}
   lua.lua_createtable(L, 1, 0);
-  // Build mock valueObject whose methods return mock sub-objects (also userdata)
-  const mockControl = { getId: () => ref, getName: () => "", getColor: () => 0xFFFFFF };
+  const mockControl = { getId: () => tile.ref, getName: () => tile.name || "", getColor: () => 0xFFFFFF };
   const mockMessage = {
     getValue: () => midiValue,
-    getParameterNumber: () => ref,
+    getParameterNumber: () => tile.msgParam ?? tile.ref,
     getDeviceId: () => 1,
-    getType: () => CONST.PT_CC7,   // numeric type so `type == PT_CC7` comparisons work
-    getMin: () => 0, getMax: () => 127,
-    getOnValue: () => 127, getOffValue: () => 0,
+    getType: () => tile.msgType ?? CONST.PT_CC7,
+    getMin: () => tile.msgMin ?? 0, getMax: () => tile.msgMax ?? 127,
+    getOnValue: () => tile.msgOn ?? 127, getOffValue: () => tile.msgOff ?? 0,
   };
   const mockVO = {
     getControl: () => mockControl,
     getMessage: () => mockMessage,
     getValue: () => midiValue,
     setValue: () => {},
-    getMin: () => 0, getMax: () => 127,
+    getMin: () => tile.msgMin ?? 0, getMax: () => tile.msgMax ?? 127,
     getDefault: () => 64,
   };
-  // Use pushJSAsLua so nested method chains work (vo:getMessage():getType())
   pushJSAsLua(L, mockVO);
   lua.lua_seti(L, -2, 1);
-  // arg2: origin (0 = USER)
-  lua.lua_pushnumber(L, 0);
-  // arg3: midiValue
+  lua.lua_pushnumber(L, 0);                  // origin (USER)
   lua.lua_pushnumber(L, midiValue);
   if (lua.lua_pcall(L, 3, 0, 0) !== 0) {
     logMsg("parameterMap.onChange err: " + safeTostring(L, -1), "err");
     lua.lua_pop(L, 1);
   }
-  lua.lua_pop(L, 1); // pop parameterMap table
+  lua.lua_pop(L, 1); // parameterMap
+  // Also invoke per-value callback (e.g. xCcChanged) if the preset defined one
+  if (tile.fnName) {
+    lua.lua_getglobal(L, to_luastring(tile.fnName));
+    if (lua.lua_isfunction(L, -1)) {
+      pushJSAsLua(L, mockVO);
+      lua.lua_pushnumber(L, midiValue);
+      if (lua.lua_pcall(L, 2, 0, 0) !== 0) {
+        logMsg(`${tile.fnName} err: ${safeTostring(L, -1)}`, "err");
+        lua.lua_pop(L, 1);
+      }
+    } else {
+      lua.lua_pop(L, 1);
+    }
+  }
+  lua.lua_pop(L, 1);
 }
 
 function createNativeTileOverlays(stage) {
@@ -566,6 +618,8 @@ function createNativeTileOverlays(stage) {
         stage.tileValues[tile.ref] = maxW > 0 ? Math.round(127 * curW / maxW) : 64;
       } else if (tile.type === "pad") {
         stage.tileValues[tile.ref] = 0;
+      } else if (tile.type === "list") {
+        stage.tileValues[tile.ref] = tile.defaultValue ?? 0;
       } else {
         stage.tileValues[tile.ref] = 0;
       }
@@ -605,7 +659,7 @@ function createNativeTileOverlays(stage) {
         if (v !== stage.tileValues[tile.ref]) {
           stage.tileValues[tile.ref] = v;
           updateTileVisual(tile, v);
-          fireParameterChange(stage, tile.ref, v);
+          fireParameterChange(stage, tile, v);
         }
       });
       el.addEventListener("pointerup", () => { dragging = false; });
@@ -614,16 +668,21 @@ function createNativeTileOverlays(stage) {
         const v = stage.tileValues[tile.ref] ? 0 : 127;
         stage.tileValues[tile.ref] = v;
         updateTileVisual(tile, v);
-        fireParameterChange(stage, tile.ref, v);
+        fireParameterChange(stage, tile, v);
       });
     } else if (tile.type === "list") {
-      el.addEventListener("click", () => {
-        const steps = [0, 32, 64, 96, 127];
-        const cur = stage.tileValues[tile.ref] || 0;
-        const next = steps[(steps.indexOf(cur) + 1) % steps.length];
+      // Cycle through textValues on click (shift-click = previous)
+      el.addEventListener("click", (ev) => {
+        const tv = Array.isArray(tile.textValues) ? tile.textValues : null;
+        if (!tv || tv.length === 0) return;
+        const cur = stage.tileValues[tile.ref];
+        const curIdx = tv.findIndex(t => t.value === cur);
+        const dir = ev.shiftKey ? -1 : 1;
+        const nextIdx = ((curIdx < 0 ? 0 : curIdx + dir) + tv.length) % tv.length;
+        const next = tv[nextIdx].value;
         stage.tileValues[tile.ref] = next;
         updateTileVisual(tile, next);
-        fireParameterChange(stage, tile.ref, next);
+        fireParameterChange(stage, tile, next);
       });
     }
   }
@@ -665,8 +724,13 @@ function updateTileVisual(tile, value) {
   } else if (tile.type === "pad") {
     tile.valueEl.setAttribute("fill-opacity", value ? "0.8" : "0.2");
   } else if (tile.type === "list") {
-    // For lists, update the visible text if we're pointing at a text node
-    try { tile.valueEl.textContent = String(value); } catch (_) {}
+    // Map value to textValue label when available, else show the raw number
+    let label = String(value);
+    if (Array.isArray(tile.textValues)) {
+      const tv = tile.textValues.find(t => t.value === value);
+      if (tv) label = tv.label;
+    }
+    try { tile.valueEl.textContent = label; } catch (_) {}
   }
 }
 
@@ -762,17 +826,50 @@ async function loadWidget(slug) {
       tiles.push({ type, bounds: [x, y, w, h], el: g });
     });
 
-    // Match SVG tiles to preset tiles in order
+    // Match SVG tiles to preset tiles. For each SVG tile, consume the next
+    // unused preset tile of the same type (the preset may interleave types
+    // differently from the SVG, so a single linear cursor doesn't work).
     if (preset && preset.tiles) {
-      let pi = 0;
+      const TYPE_MAP = { cc7: CONST.PT_CC7, virtual: CONST.PT_VIRTUAL, nrpn: CONST.PT_NRPN, rpn: CONST.PT_RPN };
+      const used = new Set();
       for (const st of tiles) {
-        while (pi < preset.tiles.length && preset.tiles[pi].type !== st.type) pi++;
-        if (pi >= preset.tiles.length) break;
-        const pt = preset.tiles[pi];
+        let pt = null;
+        for (let k = 0; k < preset.tiles.length; k++) {
+          if (used.has(k)) continue;
+          if (preset.tiles[k].type !== st.type) continue;
+          pt = preset.tiles[k];
+          used.add(k);
+          break;
+        }
+        if (!pt) continue;
         st.ref = pt.reference;
         st.name = pt.name;
         st.mode = pt.mode;
-        pi++;
+        // First value's message — type + parameterNumber are what the Lua compares
+        const msg = pt.values && pt.values[0] && pt.values[0].message;
+        if (msg) {
+          st.msgType = TYPE_MAP[msg.type] ?? CONST.PT_CC7;
+          st.msgParam = msg.parameterNumber ?? 0;
+          st.msgMin = msg.min ?? 0;
+          st.msgMax = msg.max ?? 127;
+          st.msgOn  = msg.onValue  ?? 127;
+          st.msgOff = msg.offValue ?? 0;
+        }
+        const vo = pt.values && pt.values[0];
+        // Per-value Lua callback name (e.g. "xCcChanged")
+        if (vo && typeof vo.function === "string") st.fnName = vo.function;
+        // For list tiles, update the displayed value text to match defaultValue's label
+        if (st.type === "list" && vo && Array.isArray(vo.textValues)) {
+          st.textValues = vo.textValues;
+          st.defaultValue = vo.defaultValue ?? vo.textValues[0]?.value;
+        }
+        // Link tile ↔ Control so widget code like `control:getValue():getMessage():setParameterNumber(cc)`
+        // writes back to tile.msgParam (keeps parameterMap.set routing in sync).
+        if (st.ref && !stage.controls[st.ref]) {
+          const [x, y, w, h] = st.bounds;
+          stage.controls[st.ref] = new Control(st.ref, stage, [x, y, w, h]);
+        }
+        if (st.ref && stage.controls[st.ref]) stage.controls[st.ref].tile = st;
       }
     }
     stage.nativeTiles = tiles;
@@ -806,10 +903,20 @@ async function loadWidget(slug) {
   stage.L = L;
   setupEnv(L, stage);
   await runLua(L, code);
-  stage.paintAll();
 
   // Build interactive overlays for native tiles
   createNativeTileOverlays(stage);
+
+  // Initial sync: fire per-value callbacks for tiles with their default value,
+  // so widgets that route CCs (cube-lfo's xCcChanged/yCcChanged) align fader
+  // parameterNumbers with the list defaults before the first tick.
+  for (const tile of stage.nativeTiles) {
+    if (tile.fnName) {
+      const v = stage.tileValues[tile.ref] ?? tile.defaultValue ?? 0;
+      try { fireParameterChange(stage, tile, v); } catch (_) {}
+    }
+  }
+  stage.paintAll();
 
   // Pointer → touch
   const toStage = (ev) => {
