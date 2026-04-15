@@ -1,6 +1,11 @@
 // Electra One widget emulator — Fengari + canvas stubs
 // Phase 1: render paint callbacks + touch events.
 
+console.log("[emulator] script parsed. window.fengari =", typeof window.fengari);
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("[emulator] DOMContentLoaded. fengari =", typeof window.fengari);
+});
+
 const RAW_BASE = "https://raw.githubusercontent.com/roomi-fields/electraone-widgets/main";
 
 const CONST = {
@@ -109,7 +114,14 @@ function pushValue(L, v) {
   else if (typeof v === "string") lua.lua_pushstring(L, to_luastring(v));
   else if (typeof v === "boolean") lua.lua_pushboolean(L, v ? 1 : 0);
   else if (typeof v === "function") lua.lua_pushjsfunction(L, wrapFn(v));
-  else if (typeof v === "object") pushObject(L, v);
+  else if (typeof v === "object") {
+    // Class instances (prototype methods) vs plain data tables
+    if (v.constructor && v.constructor !== Object) {
+      pushJSAsLua(L, v);    // proxy with __index resolving prototype methods
+    } else {
+      pushObject(L, v);     // plain data table
+    }
+  }
   else lua.lua_pushnil(L);
 }
 
@@ -394,8 +406,14 @@ async function loadWidget(slug) {
 }
 
 async function boot() {
+  console.log("[emulator] boot() starting");
+  logMsg("boot() starting…", "info");
   try { initFengari(); }
-  catch (e) { logMsg(e.message, "err"); return; }
+  catch (e) {
+    console.error("[emulator] initFengari failed", e);
+    logMsg("initFengari failed: " + e.message, "err");
+    return;
+  }
   logMsg("Fengari loaded.", "info");
 
   // populate widgets
