@@ -8,7 +8,7 @@ local X = 0.5
 local Y = 0.5
 
 -- Colors
-local BG   = 0x202020  -- background
+local BG   = 0x000000  -- background
 local GRID = 0x404040  -- crosshair lines
 local DOT  = 0xFFFFFF  -- cursor
 
