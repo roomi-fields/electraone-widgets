@@ -21,6 +21,6 @@
     "slug": "xypad",
     "name": "XY Pad",
     "description": "Two-axis touch pad. Touch/drag on the screen → two normalized values (0..1) sent via an `onChange(x, y)` hook, which you wire to whatever MIDI messages you want (CCs, NRPNs, SysEx).",
-    "previewExt": null
+    "previewExt": "svg"
   }
 ]

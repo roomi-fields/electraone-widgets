@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1016 560" width="1016" height="560" preserveAspectRatio="xMidYMid meet" role="img" aria-label="XY Pad widget preview">
+  <!-- Electra One MK2 display (1016×560), full-screen XY Pad tile -->
+
+  <!-- background (tile bg = 0x202020) -->
+  <rect x="0" y="0" width="1016" height="560" fill="#202020"/>
+
+  <!-- crosshair grid (0x404040) -->
+  <line x1="508" y1="0"   x2="508" y2="560" stroke="#404040" stroke-width="2"/>
+  <line x1="0"   y1="280" x2="1016" y2="280" stroke="#404040" stroke-width="2"/>
+
+  <!-- cursor dot (0xFFFFFF), radius 14, at centre -->
+  <circle cx="508" cy="280" r="14" fill="#FFFFFF"/>
+
+  <!-- tile frame (faint border to mimic E1 tile outline) -->
+  <rect x="0.5" y="0.5" width="1015" height="559" fill="none" stroke="#3a3a3a" stroke-width="1"/>
+
+  <!-- widget name label (top-left, like E1 renders tile names) -->
+  <text x="18" y="28" font-family="'Open Sans','Helvetica Neue',Arial,sans-serif" font-size="14" font-weight="600" fill="#8a8a8a" letter-spacing="1">XY</text>
+</svg>
