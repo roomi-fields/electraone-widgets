@@ -259,7 +259,20 @@ function pushObject(L, obj) {
 // Reads AND writes proxy through to the JS object, so `ctrl.x = 100` works.
 // User-added Lua methods (`function obj:m() end`) are stored as registry refs
 // and returned raw, preserving proper self-passing semantics.
+// Cache: same JS object → same Lua proxy table, so widgets that mutate via
+// `table.insert(t, x)` see #t grow consistently across reads (Lua's sequence
+// length comes from the raw table, not the JS state behind the proxy).
+const __luaProxyByObj = new WeakMap();
+const __jsObjByProxyId = new Map();
+let __proxyIdSeq = 0;
 function pushJSAsLua(L, obj) {
+  if (obj && typeof obj === "object") {
+    const cached = __luaProxyByObj.get(obj);
+    if (cached !== undefined) {
+      lua.lua_rawgeti(L, lua.LUA_REGISTRYINDEX, cached);
+      return;
+    }
+  }
   lua.lua_createtable(L, 0, 0);
   const tableIdx = lua.lua_gettop(L);
   lua.lua_createtable(L, 0, 2);
@@ -316,7 +329,9 @@ function pushJSAsLua(L, obj) {
         obj[key] = { _luaRef: ref };
       } else {
         const val = luaToJS(L, 3);
-        obj[key] = val;
+        // Lua `t[k] = nil` should remove the key (so #t and ipairs stop at the
+        // gap), not store null — table.remove relies on this semantics.
+        if (val === null) delete obj[key]; else obj[key] = val;
         if (window.__DIAG_NEWINDEX) {
           const tag = obj.constructor && obj.constructor.name !== "Object" ? obj.constructor.name : "obj";
           const preview = typeof val === "object" && val ? `{${Object.keys(val).length}}` : JSON.stringify(val);
@@ -331,7 +346,31 @@ function pushJSAsLua(L, obj) {
   });
   lua.lua_setfield(L, -2, to_luastring("__newindex"));
 
+  // __len — Lua's `#t` and table.insert(t, ...) need the sequence length of
+  // the underlying JS object, not of the empty proxy raw table.
+  lua.lua_pushjsfunction(L, (L) => {
+    let n = 0;
+    while (obj[n + 1] !== undefined) n++;
+    lua.lua_pushinteger(L, n);
+    return 1;
+  });
+  lua.lua_setfield(L, -2, to_luastring("__len"));
+
   lua.lua_setmetatable(L, tableIdx);
+
+  // Tag the proxy table itself (raw, unmediated by metamethods) with a unique
+  // id so luaToJS can detect a round-trip and return the wrapped JS object
+  // instead of rebuilding an empty {} from the proxy's empty raw storage.
+  const proxyId = ++__proxyIdSeq;
+  lua.lua_pushstring(L, to_luastring("__jsProxyId"));
+  lua.lua_pushinteger(L, proxyId);
+  lua.lua_rawset(L, tableIdx);
+  __jsObjByProxyId.set(proxyId, obj);
+  if (obj && typeof obj === "object") {
+    lua.lua_pushvalue(L, tableIdx);
+    const ref = lauxlib.luaL_ref(L, lua.LUA_REGISTRYINDEX);
+    __luaProxyByObj.set(obj, ref);
+  }
 }
 
 function luaToJS(L, i) {
@@ -356,9 +395,21 @@ function luaToJS(L, i) {
     };
   }
   if (t === lua.LUA_TTABLE) {
-    // Resolve absolute index BEFORE pushing nil, otherwise negative indices
-    // point at the newly pushed nil instead of the table.
     const abs = lua.lua_absindex(L, i);
+    // Detect pushJSAsLua proxies via a raw-tagged field — round-trip back to
+    // the same JS object instead of synthesising an empty {} from the proxy's
+    // (intentionally empty) raw storage. Raw access avoids triggering our
+    // __index/__newindex metamethods or interfering with outer iterations.
+    lua.lua_pushstring(L, to_luastring("__jsProxyId"));
+    lua.lua_rawget(L, abs);
+    if (lua.lua_type(L, -1) === lua.LUA_TNUMBER) {
+      const id = lua.lua_tointeger(L, -1);
+      lua.lua_pop(L, 1);
+      const cached = __jsObjByProxyId.get(id);
+      if (cached !== undefined) return cached;
+    } else {
+      lua.lua_pop(L, 1);
+    }
     const obj = {};
     lua.lua_pushnil(L);
     while (lua.lua_next(L, abs) !== 0) {
@@ -817,7 +868,17 @@ async function runLua(L, code) {
   lua.lua_getfield(L, -1, to_luastring("onLoad"));
   if (lua.lua_isfunction(L, -1)) {
     if (lua.lua_pcall(L, 0, 0, 0) !== 0) {
-      logMsg("onLoad err: " + safeTostring(L, -1), "err");
+      const msg = safeTostring(L, -1);
+      // Pull a traceback for nil/empty errors — those are usually cascading
+      // from a deeper non-string error and tostring(nil) loses all context.
+      let tb = "";
+      try {
+        lauxlib.luaL_traceback(L, L, lua.lua_tostring(L, -1) || null, 1);
+        tb = " | " + (to_jsstring(lua.lua_tostring(L, -1)) || "");
+        lua.lua_pop(L, 1);
+      } catch (_) {}
+      logMsg("onLoad err: " + msg + tb, "err");
+      console.error("onLoad err:", msg, tb);
       lua.lua_pop(L, 1);
     }
   } else {
