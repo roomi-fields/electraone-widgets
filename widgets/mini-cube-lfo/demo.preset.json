@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 3,
+  "targetDevice": "mini",
+  "id": "ZS5BSFRpk5L0dTXRVkvb",
+  "name": "Mini Cube LFO",
+  "description": "Demo of graphics handled in the timer interrupt handler\n\nThe Cube LFO generates a pseudo random series of CC messages according to reading of a projection of X, Y coordinates of one of the cube vertices.\n\n**Note**, it is really meant just to demonstrate handling graphics for Custom Control.",
+  "lua": "-- Demo of graphics handled in the timer interrupt handler\n-- The Cube LFO generates a pseudo random series of CC messages\n-- according to reading of a projection of X, Y coordinates\n-- of one of the cube vertices.\n\n-- Constants\n--\n\n-- Animation refresh rate\nlocal REFRESH_RATE = 20\n\n-- Cube Control dimmensions\nlocal CUBE_WIDTH = 360\nlocal CUBE_HEIGHT = 280\n\n-- Colors (RGB 565 for now)\nlocal COLOR_EDGE = 0xFFFF\nlocal COLOR_CENTRE_POINT = 0xAB40\nlocal COLOR_MEASURED_POINT = 0xFE47\n\n-- Edge Point to meassure\nlocal MEASSURED_EDGE_POINT = 1\n\n-- Global variables\n--\n\n-- Shortcut for graphics object\nlocal g = graphics\n\n-- Cube custom control\nlocal cubeControl = controls.get(1)\n\n-- Cube's projected drawing points\ncubeControl.projection = {}\n\n-- Cube vertices\ncubeControl.vertices = {\n    {-50, -50, -50}, {50, -50, -50}, {50, 50, -50}, {-50, 50, -50},\n    {-50, -50, 50}, {50, -50, 50}, {50, 50, 50}, {-50, 50, 50}\n}\n\n-- Cube edges\ncubeControl.edges = {\n    {1, 2}, {2, 3}, {3, 4}, {4, 1},\n    {5, 6}, {6, 7}, {7, 8}, {8, 5},\n    {1, 5}, {2, 6}, {3, 7}, {4, 8}\n}\n\n-- Cube rotation angles\ncubeControl.angleX = 0\ncubeControl.angleY = 0\n\n-- Angular speed steps\ncubeControl.stepX = 0\ncubeControl.stepY = 0\n\n-- Center of the Cube\ncubeControl.centrePoint = { x = 0, y = 0 }\n\n-- Apply rotation change\n--\nfunction cubeControl:update()\n    self.angleX = self.angleX + self.stepX\n    self.angleY = self.angleY + self.stepY\n\n    local projected = {}\n    for i, v in ipairs(self.vertices) do\n        local rotatedY = rotateY(v, self.angleX)\n        local rotatedX = rotateX(rotatedY, self.angleY)\n        projected[i] = project(rotatedX)\n    end\n\n    self.projection =  projected\nend\n\n-- Set dimensions of the cube\n--\nfunction cubeControl:setDimensions(width, height)\n    local bounds = self:getBounds()\n    bounds[WIDTH] = width\n    bounds[HEIGHT] = height\n    self:setBounds(bounds)\n    self.centrePoint.x = width // 2\n    self.centrePoint.y = height // 2\nend\n\n\n-- Map of UI controls with dynamic changes\n--\nlocal uiControls = {\n    cube = cubeControl,\n    outX = controls.get(12),\n    outY = controls.get(13),\n}\n\n-- Map of parameters used in the preset\n--\nlocal parameters = {\n    outX = { PT_CC7, 1 },\n    outY = { PT_CC7, 2 },\n}\n\n\n-- Initialize the preset\n--\nfunction preset.onLoad()\n    -- Resize the custom Cube Control\n    cubeControl:setDimensions(CUBE_WIDTH, CUBE_HEIGHT)\n\n    -- Register the paint callback\n    cubeControl:setPaintCallback(paintCubeControl)\n\n    -- Configure and enable the timer\n    timer.setPeriod(REFRESH_RATE)\n    timer.enable()\n\n    uiControls.cube.stepX = 0.01\nend\n\n-- Handle Grid changes\n--\nfunction parameterMap.onChange(valueObjects, origin, midiValue)\n    -- Process user input\n    for _, valueObject in ipairs(valueObjects) do\n        local type, parameterNumber, midiValue = getTypeParameterAndValue(valueObject)\n\n        if type == PT_VIRTUAL then\n            if parameterNumber == 11 then \n                uiControls.cube.stepX = convertValue(midiValue)\n            elseif parameterNumber == 12 then \n                uiControls.cube.stepY = convertValue(midiValue)\n            end\n        end\n    end\nend\n\n-- Handle the timer callback\n--\nfunction timer.onTick()\n    cubeControl:update()\n    sendOutboundCcMessages(uiControls.cube)\n    cubeControl:repaint()\nend\n\n-- Paint Cube Control callback\n--\nfunction paintCubeControl(control)\n    -- Get the bounding box\n    local bounds = control:getBounds()\n\n    -- Clear the bounding box\n    g.setColor(0x0002)\n    g.fillRect(0, 0, bounds[WIDTH], bounds[HEIGHT])\n\n    -- Paint the Cube\n    paintCube(control)\nend\n\n-- Rotate a point around the Y axis\n--\nfunction rotateY(point, angle)\n    local cos = math.cos(angle)\n    local sin = math.sin(angle)\n    return {\n        point[1] * cos - point[3] * sin,\n        point[2],\n        point[1] * sin + point[3] * cos\n    }\nend\n\n-- Rotate a point around the X axis\n--\nfunction rotateX(point, angle)\n    local cos = math.cos(angle)\n    local sin = math.sin(angle)\n    return {\n        point[1],\n        point[2] * cos - point[3] * sin,\n        point[2] * sin + point[3] * cos\n    }\nend\n\n-- Project 3D points to 2D\n--\nfunction project(point)\n    local fov = 256\n    local viewer_distance = 200\n    return {\n        CUBE_WIDTH / 2 + (fov * point[1]) / (viewer_distance + point[3]),\n        CUBE_HEIGHT / 2 - (fov * point[2]) / (viewer_distance + point[3])\n    }\nend\n\n-- Paint the Cube 2D projection\n--\nfunction paintCube(cube)\n    -- Set color of Cube edges\n    g.setColor(COLOR_EDGE)\n\n    -- Draw all edges\n    for i, edge in ipairs(cube.edges) do\n        -- Calculate projected coordinates of given\n        -- edge endpoints\n        local p1X = math.floor(cube.projection[edge[1]][1])\n        local p1Y = math.floor(cube.projection[edge[1]][2])\n        local p2X = math.floor(cube.projection[edge[2]][1])\n        local p2Y = math.floor(cube.projection[edge[2]][2])\n\n        -- Connect he first edge point with the reference point\n        if i == MEASSURED_EDGE_POINT then\n            -- Draw the centre pojnt the the arm to\n            -- the meassured point\n            g.setColor(COLOR_CENTRE_POINT)\n            g.fillCircle(\n                cube.centrePoint.x,\n                cube.centrePoint.y, 5\n            )\n            g.drawLine(\n                cube.centrePoint.x,\n                cube.centrePoint.y,\n                p1X,\n                p1Y\n            )\n\n            -- Draw the meassured point\n            g.setColor(COLOR_MEASURED_POINT)\n            g.fillCircle(p1X, p1Y, 5)\n\n            -- Switch back to the edge color\n            g.setColor(COLOR_EDGE)\n        end\n\n        -- Draw the edge\n        g.drawLine(p1X, p1Y, p2X, p2Y)\n    end\nend\n\n-- Paint the Cube 2D projection\n--\nfunction sendOutboundCcMessages(cube)\n    local edge = cube.edges[MEASSURED_EDGE_POINT]\n    local p1 = cube.projection[edge[1]]\n    local p2 = cube.projection[edge[2]]\n\n    -- TODO: Get rid of the magic numbers\n    setParameter(\n        parameters.outX,\n        math.floor((p1[1] - (cube.centrePoint.x - 123)) * 0.52)\n    )\n    setParameter(\n        parameters.outY,\n        math.floor((p1[2] - (cube.centrePoint.y - 123)) * 0.52)\n    )\nend\n\n-- Convert a liner fader value to altered exponential\n-- value that suits angular speed adjustment\n--\nfunction convertValue(input)\n    -- Steepness of the slope\n    local k = 1\n\n    --  Maximum angular speed\n    local T = 0.2\n    \n    return T * (math.exp((input / 100) * k) - 1) / (math.exp(k) - 1)\nend\n\n-- Set a parameter value\n--\nfunction setParameter(parameter, value)\n    local type, parameterNumber = table.unpack(parameter)\n    parameterMap.set(1, type, parameterNumber, value)\nend\n\n-- Get a MIDI type, parameter, and value from the value object\n--\nfunction getTypeParameterAndValue(vo)\n    return vo:getMessage():getType(),\n        vo:getMessage():getParameterNumber(),\n        vo:getMessage():getValue()\nend\n\n-- Get MIDI value from the value object\n--\nfunction getMidiValue(vo)\n    return vo:getMessage():getValue()\nend\n\n-- Changes CC parameterNumber associated with given Control\n--\nfunction setControlCc(control, cc)\n    local message = control:getValue():getMessage()\n    message:setParameterNumber(cc)\nend\n\n\n-- Handle change of Outbound X CC\n--\nfunction xCcChanged(valueObject, value)\n    local newCc = getMidiValue(valueObject)\n    parameters.outX[2] = newCc\n    setControlCc(uiControls.outX, newCc)\nend\n\n-- Handle change of Outbound Y CC\n--\nfunction yCcChanged(valueObject, value)\n    local newCc = getMidiValue(valueObject)\n    parameters.outY[2] = newCc\n    setControlCc(uiControls.outY, newCc)\nend",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Generic MIDI",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "42efc273-8ac9-4487-9e65-b8de29754b8f",
+      "type": "label",
+      "name": "The cube",
+      "categoryId": "label",
+      "group": "labels",
+      "default": true,
+      "deviceId": 1,
+      "color": "ffffff",
+      "reference": 2,
+      "span": 4
+    },
+    {
+      "id": "4d871efe-ef97-4268-b648-4ff08f49e25d",
+      "reference": 12,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "529DEC",
+      "name": "X (CC #1)",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 1,
+            "min": 0,
+            "max": 127
+          }
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "4de45f17-52da-4be9-a360-6adc9ac9c3a4",
+      "reference": 1,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Custom",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 100
+          }
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "ee9661e2-c7ba-42b0-ba4c-afa9f8194acc",
+      "reference": 13,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "529DEC",
+      "name": "Y (CC #2)",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 2,
+            "min": 0,
+            "max": 127
+          }
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "7af37b5c-e813-4da5-b552-b8c7a0829852",
+      "type": "fader",
+      "name": "Horizontal",
+      "variant": "dial",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 11,
+            "min": 0,
+            "max": 100
+          },
+          "defaultValue": 10
+        }
+      ],
+      "categoryId": "control",
+      "group": "faders",
+      "default": true,
+      "deviceId": 1,
+      "color": "ffffff",
+      "reference": 3,
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "5e0e5384-d1c5-48fa-b812-5f762d971567",
+      "type": "fader",
+      "name": "Vertical",
+      "variant": "dial",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 12,
+            "min": 0,
+            "max": 100
+          }
+        }
+      ],
+      "categoryId": "control",
+      "group": "faders",
+      "default": true,
+      "deviceId": 1,
+      "color": "ffffff",
+      "reference": 14,
+      "visible": true,
+      "mode": ""
+    }
+  ],
+  "categories": [],
+  "layouts": [
+    {
+      "id": "mini-4x2",
+      "targetDevice": "mini",
+      "name": "Electra One Mini 4x2",
+      "slots": [
+        {
+          "id": 0,
+          "tile": {
+            "id": "54081839-d8a6-4f25-9cb3-9f852158909e",
+            "slotId": 0,
+            "type": "ref",
+            "tileId": "42efc273-8ac9-4487-9e65-b8de29754b8f"
+          }
+        },
+        {
+          "id": 4,
+          "tile": {
+            "id": "d674042b-0f09-47e0-a5ea-579aef8aba3d",
+            "slotId": 4,
+            "type": "ref",
+            "tileId": "4d871efe-ef97-4268-b648-4ff08f49e25d"
+          }
+        },
+        {
+          "id": 5,
+          "tile": {
+            "id": "dfb53bf7-6d3b-42d1-b188-3affbe66e854",
+            "slotId": 5,
+            "type": "ref",
+            "tileId": "4de45f17-52da-4be9-a360-6adc9ac9c3a4"
+          }
+        },
+        {
+          "id": 7,
+          "tile": {
+            "id": "f0bb980d-94c9-4c2a-bef9-689b2037a3cd",
+            "slotId": 7,
+            "type": "ref",
+            "tileId": "ee9661e2-c7ba-42b0-ba4c-afa9f8194acc"
+          }
+        },
+        {
+          "id": 12,
+          "tile": {
+            "id": "0b653d6b-a629-4aee-acfc-b93e7df9a94d",
+            "slotId": 12,
+            "type": "ref",
+            "tileId": "7af37b5c-e813-4da5-b552-b8c7a0829852"
+          }
+        },
+        {
+          "id": 15,
+          "tile": {
+            "id": "12428bcf-4f8b-4349-831e-bf5c98f85cab",
+            "slotId": 15,
+            "type": "ref",
+            "tileId": "5e0e5384-d1c5-48fa-b812-5f762d971567"
+          }
+        }
+      ],
+      "pages": {
+        "1": {
+          "id": "1",
+          "name": "Page 1",
+          "defaultControlSetId": 2
+        }
+      }
+    },
+    {
+      "id": "mk2-6x6",
+      "targetDevice": "mk2",
+      "name": "Electra One Mk2 6x6",
+      "slots": [],
+      "pages": {}
+    }
+  ],
+  "firstPageId": 1,
+  "_cache_meta": {
+    "source": "electra-one-public",
+    "id": "ZS5BSFRpk5L0dTXRVkvb",
+    "revision": "5",
+    "name": "Mini Cube LFO",
+    "fetched_at": "2026-04-13"
+  }
+}

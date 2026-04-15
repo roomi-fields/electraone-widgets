@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 2,
+  "id": "QIatK17htTqLzhkHRnp4",
+  "name": "[Lua] XY Pad",
+  "description": "",
+  "lua": "-- Demo of sim[ple XY Pad. Note, the preset is meant to\n-- demonstrate using the paint, touch, pot action callbacks.\n-- It does not handle any MIDI messaging. It is done on\n-- purpose, to keep things simple.\n--\n\n-- Preset compatibility check\nassert(\n    controller.isRequired(MODEL_MK2, \"3.6.0\"),\n    \"Version 3.6.0 or higher is required\"\n)\n\n-- Constants\n--\n\n-- Colors\nlocal OUTLINE_COLOR = 0xB0C0\nlocal CENTRE_CROSS_COLOR = 0x2104\nlocal ACTIVE_CROSS_COLOR = 0xB004\nlocal VALUE_CIRCLE_COLOR = 0xFC80\n\n\n-- Animation refresh rate\nlocal XY_PAD_WIDTH = 400\nlocal XY_PAD_HEIGHT = 300\n\n\n-- Global variables\n--\n\n-- Shortcut for graphics object\nlocal g = graphics\n\n-- The XY pad control\nlocal xyPadControl = controls.get(4)\nxyPadControl.x = 100\nxyPadControl.y = 80\n\n-- Initialize the preset\n--\nfunction preset.onLoad()\n    -- Resize the XY Pad (Custom) Control\n    local bounds = xyPadControl:getBounds()\n    bounds[WIDTH] = XY_PAD_WIDTH\n    bounds[HEIGHT] = XY_PAD_HEIGHT\n    xyPadControl:setBounds(bounds)\n\n    -- Assign all Custom Control callbacks\n    xyPadControl:setPaintCallback(paintXyPad)\n    xyPadControl:setTouchCallback(touchCallback)\n    xyPadControl:setPotCallback(potCallback)\nend\n\n-- A callback to draw the XY pad graphics\n--\nfunction paintXyPad(control, value)\n    local bounds = control:getBounds()\n\n    -- Clear the Control's bounding box\n    g.setColor(0x0000)\n    g.fillRect(0, 0, bounds[WIDTH], bounds[HEIGHT])\n\n    -- Draw the fixed graphics\n    g.setColor(OUTLINE_COLOR)\n    g.drawRoundRect(0, 0, bounds[WIDTH], bounds[HEIGHT], 8)\n    g.setColor(CENTRE_CROSS_COLOR)\n    g.drawLine(0, bounds[HEIGHT] // 2, bounds[WIDTH], bounds[HEIGHT] // 2)\n    g.drawLine(bounds[WIDTH] // 2, 0, bounds[WIDTH] // 2, bounds[HEIGHT])\n\n    -- Draw the active value indicator\n    g.setColor(ACTIVE_CROSS_COLOR)\n    g.drawLine(0, control.y, bounds[WIDTH], control.y)\n    g.drawLine(control.x, 0, control.x, bounds[HEIGHT])\n    g.setColor(VALUE_CIRCLE_COLOR)\n    g.drawCircle(control.x, control.y, 20)\nend\n\n-- A callback to handle to XY pad LCD touch\n--\nfunction touchCallback(control, touchEvent)\n    if touchEvent.type == MOVE then\n        if control.x ~= touchEvent.x or control.y ~= touchEvent.y then\n            control.x = touchEvent.x\n            control.y = touchEvent.y\n            control:repaint()\n            print(\"id: \" .. touchEvent.id)\n            print(\"x: \" .. touchEvent.x)\n            print(\"y: \" .. touchEvent.y)\n        end\n    end\nend\n\n-- A callback to handle events on assigned knob\n--\nfunction potCallback(control, potEvent)\n    if potEvent.type == MOVE then\n        print(\"delta: \" .. potEvent.delta)\n        control.x = control.x + potEvent.delta\n        control:repaint()\n    elseif potEvent.type == DOWN then\n        print(\"down\")\n    elseif potEvent.type == UP then\n        print(\"up\")\n    end\nend\n\n",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Generic MIDI",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "c679262e-4ca0-4c97-a77c-55df26229cbd",
+      "reference": 4,
+      "slotId": 6,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "F45C51",
+      "name": "Custom X",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "parameterNumber": 4
+          }
+        }
+      ],
+      "visible": true
+    }
+  ],
+  "pages": [
+    {
+      "id": 1,
+      "name": "Page 1"
+    }
+  ],
+  "categories": [],
+  "firstPageId": 1,
+  "_cache_meta": {
+    "source": "electra-one-public",
+    "id": "QIatK17htTqLzhkHRnp4",
+    "revision": "16",
+    "name": "[Lua] XY Pad",
+    "fetched_at": "2026-04-13"
+  }
+}

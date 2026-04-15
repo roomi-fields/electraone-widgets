@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" data-v-4ddf6a3f="" viewBox="0 0 996 560" width="996" height="560" class="display preview-image">
+    <style>
+        .name {
+      font-family: "Open Sans";
+      font-size: 16px;
+    }
+    .name-small {
+      font-family: "Open Sans";
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .slot-id-small {
+      font-family: "Open Sans";
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+    .value {
+      font-family: "Open Sans";
+      font-size: 16px;
+      font-weight: bold;
+    }
+    </style>
+    <defs>
+        <style type="text/css">
+            @import url("https://fonts.googleapis.com/css?family=Open+Sans:400,700&amp;display=swap");
+
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      text {
+        font-family: "Avenir", Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        color: #2c3e50;
+      }
+
+      .display {
+        background-color: black;
+      }
+        </style>
+    </defs>
+    <g variant="label" layoutId="mini-4x2" id="2" pageId="1" bounds="16,10,771,16" type="label" _key="0">
+        <g style="filter: brightness(50%);">
+            <line x1="24" x2="370" y1="25" y2="25" stroke="#ffffff"/>
+            <line x1="433" x2="779" y1="25" y2="25" stroke="#ffffff"/>
+            <line x1="24" x2="24" y1="25" y2="25" stroke="#ffffff"/>
+            <line x1="779" x2="779" y1="25" y2="25" stroke="#ffffff"/>
+            <!---->
+        </g>
+        <text font-size="12" pad="16" x="402" y="26" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            TOMBOLA
+        </text>
+    </g>
+    <g variant="label" layoutId="mini-4x2" id="10" pageId="1" bounds="277,342,116,16" type="label" _key="1">
+        <g style="filter: brightness(50%);">
+            <line x1="285" x2="300" y1="357" y2="357" stroke="#ffffff"/>
+            <line x1="371" x2="385" y1="357" y2="357" stroke="#ffffff"/>
+            <line x1="285" x2="285" y1="357" y2="357" stroke="#ffffff"/>
+            <line x1="385" x2="385" y1="357" y2="357" stroke="#ffffff"/>
+            <!---->
+        </g>
+        <text font-size="12" pad="16" x="335" y="358" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            # OF NOTES
+        </text>
+    </g>
+    <g variant="label" layoutId="mini-4x2" id="11" pageId="1" bounds="407,342,116,16" type="label" _key="2">
+        <g style="filter: brightness(50%);">
+            <line x1="415" x2="434" y1="357" y2="357" stroke="#ffffff"/>
+            <line x1="497" x2="515" y1="357" y2="357" stroke="#ffffff"/>
+            <line x1="415" x2="415" y1="357" y2="357" stroke="#ffffff"/>
+            <line x1="515" x2="515" y1="357" y2="357" stroke="#ffffff"/>
+            <!---->
+        </g>
+        <text font-size="12" pad="16" x="465" y="358" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            LIFE SPAN
+        </text>
+    </g>
+    <g transform="translate(20, 36)" min="-50" max="50" textValues="" mode="" variant="dial" layoutId="mini-4x2" type="fader" visible="visible" bounds="20,36,175,122" pageId="1" _key="3">
+        <circle cx="88" cy="41" fill="#ffffff" stroke="#ffffff" r="32.800000000000004" fill-opacity="0.5"/>
+        <path d="M 105.4 71.13768405169847 A 34.800000000000004 34.800000000000004 0 0 1 70.60000000000001 71.13768405169847 L 88 41 Z" fill="#000000" stroke="none"/>
+        <path d="" stroke="#ffffff" stroke-width="10.933333333333335" stroke-linecap="butt" fill="none"/>
+        <circle cx="88" cy="41" fill="#262626" stroke="none" r="21.866666666666667"/>
+        <text font-size="12" x="88" y="114" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+            SPEED
+        </text>
+    </g>
+    <g transform="translate(216, 36)" variant="custom" layoutId="mini-4x2" type="custom" visible="visible" bounds="216,36,175,122" pageId="1" _key="4">
+        <rect x="16" y="5" width="143" height="107" stroke="#ffffff" rx="4" ry="4" stroke-dasharray="2" fill-opacity="0.5" style="z-index: 1;"/>
+        <text font-size="12" x="88" y="61" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            CUSTOM
+        </text>
+    </g>
+    <g transform="translate(608, 36)" min="0" max="100" textValues="" mode="unipolar" variant="dial" layoutId="mini-4x2" type="fader" visible="visible" bounds="608,36,175,122" pageId="1" _key="5">
+        <circle cx="88" cy="41" fill="#ffffff" stroke="#ffffff" r="32.800000000000004" fill-opacity="0.5"/>
+        <path d="M 105.4 71.13768405169847 A 34.800000000000004 34.800000000000004 0 0 1 70.60000000000001 71.13768405169847 L 88 41 Z" fill="#000000" stroke="none"/>
+        <path d="" stroke="#ffffff" stroke-width="10.933333333333335" stroke-linecap="butt" fill="none"/>
+        <circle cx="88" cy="41" fill="#262626" stroke="none" r="21.866666666666667"/>
+        <text font-size="12" x="88" y="114" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+            SPAWN RATE
+        </text>
+    </g>
+    <g transform="translate(20, 198)" min="0" max="100" textValues="" mode="unipolar" variant="dial" layoutId="mini-4x2" type="fader" visible="visible" bounds="20,198,175,122" pageId="1" _key="6">
+        <circle cx="88" cy="41" fill="#ffffff" stroke="#ffffff" r="32.800000000000004" fill-opacity="0.5"/>
+        <path d="M 105.4 71.13768405169847 A 34.800000000000004 34.800000000000004 0 0 1 70.60000000000001 71.13768405169847 L 88 41 Z" fill="#000000" stroke="none"/>
+        <path d="" stroke="#ffffff" stroke-width="10.933333333333335" stroke-linecap="butt" fill="none"/>
+        <circle cx="88" cy="41" fill="#262626" stroke="none" r="21.866666666666667"/>
+        <text font-size="12" x="88" y="114" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+            GRAVITY
+        </text>
+    </g>
+    <g transform="translate(608, 198)" min="0" max="100" textValues="" mode="unipolar" variant="dial" layoutId="mini-4x2" type="fader" visible="visible" bounds="608,198,175,122" pageId="1" _key="7">
+        <circle cx="88" cy="41" fill="#ffffff" stroke="#ffffff" r="32.800000000000004" fill-opacity="0.5"/>
+        <path d="M 105.4 71.13768405169847 A 34.800000000000004 34.800000000000004 0 0 1 70.60000000000001 71.13768405169847 L 88 41 Z" fill="#000000" stroke="none"/>
+        <path d="" stroke="#ffffff" stroke-width="10.933333333333335" stroke-linecap="butt" fill="none"/>
+        <circle cx="88" cy="41" fill="#262626" stroke="none" r="21.866666666666667"/>
+        <text font-size="12" x="88" y="114" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+            BOUNCE
+        </text>
+    </g>
+    <g transform="translate(277, 363)" variant="list" layoutId="mini-4x2" type="list" visible="visible" bounds="277,363,117,51" pageId="1" _key="8">
+        <defs>
+            <clipPath id="clip-11467">
+                <rect x="2" y="2" width="113" height="47"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-11467&quot;);">
+            <circle cx="30" cy="30" fill="#ffffff" fill-opacity="1" r="2"/>
+            <circle cx="36" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="42" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="48" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="54" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="60" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="66" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="72" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="78" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="84" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <text font-size="12" x="59" y="23" fill="#ffffff" text-anchor="middle" class="value">
+                3
+            </text>
+            <text font-size="12" x="59" y="43" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                # OF NOTES
+            </text>
+            <!---->
+        </g>
+    </g>
+    <g transform="translate(407, 363)" variant="list" layoutId="mini-4x2" type="list" visible="visible" bounds="407,363,117,51" pageId="1" _key="9">
+        <defs>
+            <clipPath id="clip-11472">
+                <rect x="2" y="2" width="113" height="47"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-11472&quot;);">
+            <circle cx="42" cy="30" fill="#ffffff" fill-opacity="1" r="2"/>
+            <circle cx="48" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="54" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="60" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="66" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <circle cx="72" cy="30" fill="#ffffff" fill-opacity="0.5" r="2"/>
+            <text font-size="12" x="59" y="23" fill="#ffffff" text-anchor="middle" class="value">
+                3
+            </text>
+            <text font-size="12" x="59" y="43" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                LIFE SPAN
+            </text>
+            <!---->
+        </g>
+    </g>
+    <g transform="translate(537, 363)" mode="momentary" variant="pad" layoutId="mini-4x2" type="pad" visible="visible" bounds="537,363,117,51" pageId="1" _key="10">
+        <rect x="16" y="5" width="85" height="41" fill="#ffffff" stroke="#ffffff" rx="4" ry="4" fill-opacity="0.2" stroke-opacity="0.2"/>
+        <text font-size="12" x="59" y="26" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            BOOST
+        </text>
+    </g>
+    <g transform="translate(667, 363)" mode="momentary" variant="pad" layoutId="mini-4x2" type="pad" visible="visible" bounds="667,363,117,51" pageId="1" _key="11">
+        <rect x="16" y="5" width="85" height="41" fill="#ffffff" stroke="#ffffff" rx="4" ry="4" fill-opacity="0.2" stroke-opacity="0.2"/>
+        <text font-size="12" x="59" y="26" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            SCALE DICE
+        </text>
+    </g>
+</svg>

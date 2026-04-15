@@ -1,0 +1,401 @@
+{
+  "schemaVersion": 3,
+  "targetDevice": "mk2",
+  "id": "xXHHSJir8jJHt3P1uWZ6",
+  "name": "Custom with 2 parms",
+  "description": "",
+  "lua": "-- Some Custom Controls with two rows of parameters\n\n-- Control Ids & Parameter Numbers\nCONTROL_CUSTOM_3V = 4\nCONTROL_CUSTOM_FADER = 1\nCONTROL_CUSTOM_OVERLAY = 2\nPMAP_CUSTOM_3V_1 = 4\nPMAP_CUSTOM_3V_2 = 5\nPMAP_CUSTOM_FADER_1 = 29\nPMAP_CUSTOM_FADER_2 = 30\nPMAP_CUSTOM_OVERLAY_1 = 1\nPMAP_CUSTOM_OVERLAY_2 = 2\n\nfunction initCustomControls()\n    -- Custom control static definitions for graphics & pot\n    CUSTOMDEF_LIST3V = {\n        px=8,py=6,pw=40,ph=18,yoffset=25,\n        vx=55,vy=11,vw=30,vh=18,xoffset=30,\n        potTicks = 20, valueCallback = paintCustomListValues }\n    CUSTOMDEF_LIST2V = {\n        px=8,py=6,pw=40,ph=18,yoffset=25,\n        vx=55,vy=11,vw=30,vh=18,xoffset=45,\n        potTicks = 20, valueCallback = paintCustomListValues }\n    CUSTOMDEF_OVLIST = {\n        px=8,py=6,pw=55,ph=18,yoffset=25,\n        vx=55,vy=11,vw=70,vh=18,xoffset=70,\n        potTicks = 20, valueCallback = paintCustomOverlayValues }\n    CUSTOMDEF_FADER = {\n        px=8,py=6,pw=45,ph=18,yoffset=25,\n        vx=55,vy=11,vw=58,vh=8,xoffset=25,\n        potTicks = 1, valueCallback = paintCustomFaderValues }\n    CUSTOMDEF_OVFADER = {\n        px=8,py=6,pw=55,ph=18,yoffset=25,\n        vx=70,vy=11,vw=38,vh=8,xoffset=30,\n        potTicks = 1, valueCallback = paintCustomOverlayFaderValues }\n    -- Custom control value definitions (overlays)\n    CUSTOMOV_LFOSYNC = { {value = 0, label=\"Off\"}, {value = 1, label=\"Clk\"}, {value = 2, label=\"Tap\"}}\n    CUSTOMOV_LFOSYNC2 = { {value = 0, label=\"Off\"}, {value = 1, label=\"Clk\"}}\n    CUSTOMOV_LFOWAVE = { {value = 0, label=\"Triangle\"}, {value = 1, label=\"Sine\"}, {value = 2, label=\"Saw\"}, {value = 3, label=\"Square\"}, {value = 4, label=\"Random\"}, {value = 5, label=\"Chaos\"}}\n    CUSTOMOV_LFOWAVE2 = { {value = 0, label=\"Tri\"}, {value = 1, label=\"Sin\"}, {value = 2, label=\"Saw\"}, {value = 3, label=\"Sqr\"}, {value = 4, label=\"Rnd\"}, {value = 5, label=\"Chs\"}}\n    -- Custom control individual definitions\n    CUSTOM_CTRL = {}\n    CUSTOM_CTRL[CONTROL_CUSTOM_3V] = {selected = 1, potValue = 0, valueObjects = { \n        { p = {label = \"LFO1:\",pmap = PMAP_CUSTOM_3V_1, gdef = CUSTOMDEF_LIST3V}, v = CUSTOMOV_LFOSYNC },\n        { p = {label = \"LFO2:\",pmap = PMAP_CUSTOM_3V_2, gdef = CUSTOMDEF_LIST2V}, v = CUSTOMOV_LFOSYNC2 }}}\n    CUSTOM_CTRL[CONTROL_CUSTOM_FADER] = {selected = 1, potValue = 0, valueObjects = {\n        { p = {label = \"Rate1:\",pmap = PMAP_CUSTOM_FADER_1, gdef = CUSTOMDEF_FADER}, v = {} },\n        { p = {label = \"Rate2:\",pmap = PMAP_CUSTOM_FADER_2, gdef = CUSTOMDEF_FADER}, v = {} }}}\n    CUSTOM_CTRL[CONTROL_CUSTOM_OVERLAY] = {selected = 1, potValue = 0, valueObjects = {\n        { p = {label = \"Wave1:\",pmap = PMAP_CUSTOM_OVERLAY_1, gdef = CUSTOMDEF_OVLIST}, v = CUSTOMOV_LFOWAVE },\n        { p = {label = \"Wave2:\",pmap = PMAP_CUSTOM_OVERLAY_2, gdef = CUSTOMDEF_OVFADER}, v = CUSTOMOV_LFOWAVE2}}}\n    -- initializing the custom controls \n    for c,s in pairs(CUSTOM_CTRL) do \n        local control = controls.get(c)\n        -- Assign all Custom Control callbacks\n        control:setPaintCallback(paintCustom)\n        control:setTouchCallback(customCtrlTouchCallback)\n        control:setPotCallback(customCtrlPotCallback)\n        -- Assign pot to Custom Control\n        local slot = getPotFromBounds(control) - 1\n        control:setPot(slot//12 + 1,slot%12 + 1)\n\n        -- Assign min/max & paramaterType from ValueObject & Message\n        for i,v in pairs(control:getValues()) do\n            local customValue = getCustomValue(s,v:getMessage():getParameterNumber())\n            customValue.p.midiMin = v:getMessage():getMin()\n            customValue.p.midiMax = v:getMessage():getMax()\n            customValue.p.valMin = v:getMin()\n            customValue.p.valMax = v:getMax()\n            customValue.p.pType = v:getMessage():getType()\n            customValue.p.quotient = (customValue.p.valMax - customValue.p.valMin) // (customValue.p.midiMax - customValue.p.midiMin)\n            customValue.p.deviceId = v:getMessage():getDeviceId()\n            local default = (v:getDefault() - customValue.p.valMin) / customValue.p.quotient + customValue.p.midiMin\n            parameterMap.set (customValue.p.deviceId, PT_SYSEX, customValue.p.pmap, default)\n\n        end\n    end\nend\nfunction getCustomValue(custom, pmap) \n    for _,v in ipairs(custom.valueObjects) do\n        if(pmap == v.p.pmap) then return v end\n    end\n    return nil\nend\n-- Paint callbacks\nlocal g = graphics\nfunction paintCustom(control, value)\n    local bounds = control:getBounds()\n    local customCtrl = CUSTOM_CTRL[control:getId()]\n    -- Clear the Control's bounding box\n    g.setColor(0x0000)\n    g.fillRect(0, 0, bounds[WIDTH], bounds[HEIGHT])\n    -- Draw the fixed graphics\n    g.setColor(control:getColor())\n    g.drawRoundRect(0, 0, bounds[WIDTH], bounds[HEIGHT]-3, 8)\n    g.drawLine(0, bounds[HEIGHT] // 2 -1, bounds[WIDTH], bounds[HEIGHT] // 2 -1)\n    -- Draw value rows\n    for i,s in pairs(customCtrl.valueObjects) do\n        local gdef = s.p.gdef\n        if(customCtrl.selected == i) then -- value selected\n            g.setColor(RED)\n            g.drawRoundRect(gdef.px, gdef.py+(i-1)*gdef.yoffset, gdef.pw, gdef.ph,5)\n        end\n        g.setColor(WHITE)\n        g.print(gdef.px+4,gdef.py+(i-1)*gdef.yoffset+5,s.p.label,gdef.ph, CENTER)\n        -- Draw value items\n        local midiValue = parameterMap.get(s.p.deviceId,s.p.pType,s.p.pmap)\n        gdef.valueCallback(s, gdef, i, midiValue)\n    end\nend\nfunction paintCustomListValues(customValue, gdef, row, midiValue)\n    for j,v in ipairs(customValue.v) do\n        if(midiValue == v.value) then g.setColor(RED) else g.setColor(WHITE) end\n        g.print(gdef.vx+(j-1)*gdef.xoffset,gdef.vy+(row-1)*gdef.yoffset,v.label,gdef.vh, CENTER)\n    end\nend\nfunction paintCustomFaderValues(customValue, gdef, row, midiValue)\n    local displayValue = customValue.p.valMin + midiValue * customValue.p.quotient\n    g.print(gdef.vx,gdef.vy+(row-1)*gdef.yoffset,string.format(\"%d\",displayValue),gdef.xoffset-5, RIGHT)\n    valueWidth = math.floor(gdef.vw/customValue.p.midiMax * midiValue)\n    g.setColor(0x2e2e2e)\n    g.fillRect(gdef.vx+gdef.xoffset, gdef.vy+(row-1)*gdef.yoffset,gdef.vw, gdef.vh)\n    g.setColor(WHITE)\n    g.fillRect(gdef.vx+gdef.xoffset, gdef.vy+(row-1)*gdef.yoffset,valueWidth, gdef.vh)\nend\nfunction paintCustomOverlayValues(customValue, gdef, row, midiValue)\n    for j,v in ipairs(customValue.v) do\n        if(midiValue == v.value) then \n            g.print(gdef.xoffset,gdef.vy+(row-1)*gdef.yoffset,v.label,gdef.vw, CENTER)\n        end\n    end\nend \nfunction paintCustomOverlayFaderValues(customValue, gdef, row, midiValue)\n    for j,v in ipairs(customValue.v) do\n        if(midiValue == v.value) then \n            g.print(gdef.vx,gdef.vy+(row-1)*gdef.yoffset,v.label,gdef.vw, LEFT)\n        end\n    end\n    local displayValue = customValue.p.valMin + midiValue\n    valueWidth = math.floor(gdef.vw/customValue.p.midiMax * midiValue)\n    g.setColor(0x2e2e2e)\n    g.fillRect(gdef.vx+gdef.xoffset, gdef.vy+(row-1)*gdef.yoffset,gdef.vw, gdef.vh)\n    g.setColor(WHITE)\n    g.fillRect(gdef.vx+gdef.xoffset, gdef.vy+(row-1)*gdef.yoffset,valueWidth, gdef.vh)\nend\n\n-- Callback to switch selected valueObjects\nfunction customCtrlTouchCallback(control, touchEvent)\n    if touchEvent.type == DOUBLECLICK then\n        local s = CUSTOM_CTRL[control:getId()]\n        s.selected = 3-s.selected\n        control:repaint()\n    end\nend\n-- Callback to change midiValue by pot\nfunction customCtrlPotCallback(control, potEvent)\n    local customCtrl = CUSTOM_CTRL[control:getId()]\n    local selectedValue = customCtrl.valueObjects[customCtrl.selected].p\n    if((customCtrl.potValue+math.abs(potEvent.delta))%selectedValue.gdef.potTicks ~=0) then\n        customCtrl.potValue = customCtrl.potValue+1\n    else\n        customCtrl.potValue = 0\n        local pmap = selectedValue.pmap\n        local pType = selectedValue.pType\n        local current = parameterMap.get(selectedValue.deviceId,pType,pmap)\n        if((current + potEvent.delta) <= selectedValue.midiMax and (current + potEvent.delta) >= selectedValue.midiMin) then\n            parameterMap.set(selectedValue.deviceId,pType,pmap,current + potEvent.delta)\n        end\n    end\nend\nfunction getPotFromBounds(control)\n    local bounds = control:getBounds()\n    local x = math.floor(bounds[X] / 167) + 1\n    local y = math.floor(bounds[Y] / 90)\n    return (y*6)+x \nend\n-- callback at parameter change\nfunction customRepaint(valueObject, value)\n    valueObject:getControl():repaint()\nend\ninitCustomControls()",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Generic MIDI",
+      "port": 1,
+      "channel": 1,
+      "patch": [
+        {
+          "request": [],
+          "responses": [
+            {
+              "header": [
+                "41",
+                "10",
+                "6A",
+                "12",
+                "03",
+                "00",
+                "10",
+                "35"
+              ],
+              "rules": [
+                {
+                  "parameterNumber": 5,
+                  "type": "sysex",
+                  "byte": 0,
+                  "bitWidth": 2,
+                  "byteBitPosition": 0,
+                  "parameterBitPosition": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "request": [],
+          "responses": [
+            {
+              "header": [
+                "41",
+                "10",
+                "6A",
+                "12",
+                "03",
+                "00",
+                "10",
+                "34"
+              ],
+              "rules": [
+                {
+                  "parameterNumber": 4,
+                  "type": "sysex",
+                  "byte": 0,
+                  "bitWidth": 2,
+                  "byteBitPosition": 0,
+                  "parameterBitPosition": 0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "instrumentId": "generic-controls"
+    }
+  ],
+  "tiles": [
+    {
+      "id": "4712d458-dbef-4b6c-b7bf-2f87ce7fd417",
+      "type": "custom",
+      "visible": true,
+      "name": "Custom 3V",
+      "color": "03A598",
+      "bounds": [
+        20,
+        28,
+        146,
+        56
+      ],
+      "controlSetId": 1,
+      "inputs": [
+        {
+          "potId": 1,
+          "valueId": "value"
+        }
+      ],
+      "values": [
+        {
+          "id": "l1",
+          "message": {
+            "type": "sysex",
+            "deviceId": 1,
+            "data": [
+              "41",
+              "00",
+              "43",
+              {
+                "type": "value",
+                "rules": [
+                  {
+                    "type": "sysex",
+                    "parameterNumber": 4,
+                    "parameterBitPosition": 0,
+                    "byteBitPosition": 0,
+                    "bitWidth": 7
+                  }
+                ]
+              },
+              {
+                "type": "checksum",
+                "start": "5",
+                "length": "5",
+                "algorithm": "roland"
+              }
+            ],
+            "parameterNumber": 4,
+            "min": 0,
+            "max": 2
+          },
+          "min": 0,
+          "max": 2,
+          "defaultValue": 0,
+          "function": "customRepaint"
+        },
+        {
+          "id": "l2",
+          "message": {
+            "type": "sysex",
+            "deviceId": 1,
+            "data": [
+              "41",
+              "00",
+              "42",
+              {
+                "type": "value",
+                "rules": [
+                  {
+                    "type": "sysex",
+                    "parameterNumber": 5,
+                    "parameterBitPosition": 0,
+                    "byteBitPosition": 0,
+                    "bitWidth": 7
+                  }
+                ]
+              },
+              {
+                "type": "checksum",
+                "start": "5",
+                "length": "5",
+                "algorithm": "roland"
+              }
+            ],
+            "parameterNumber": 5,
+            "min": 0,
+            "max": 1
+          },
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "function": "customRepaint"
+        }
+      ],
+      "reference": 4,
+      "deviceId": 1
+    },
+    {
+      "id": "c8d42861-1778-4cbc-8ed4-731fc0be5fbb",
+      "reference": 1,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "F5F569",
+      "name": "CUSTOM Fader",
+      "values": [
+        {
+          "id": "r1",
+          "message": {
+            "type": "sysex",
+            "deviceId": 1,
+            "data": [
+              "41",
+              "00",
+              "44",
+              {
+                "type": "value",
+                "rules": [
+                  {
+                    "type": "sysex",
+                    "parameterNumber": 29,
+                    "parameterBitPosition": 0,
+                    "byteBitPosition": 0,
+                    "bitWidth": 7
+                  }
+                ]
+              },
+              {
+                "type": "checksum",
+                "start": "5",
+                "length": "5",
+                "algorithm": "roland"
+              }
+            ],
+            "parameterNumber": 29,
+            "min": 0,
+            "max": 125
+          },
+          "min": -100,
+          "max": 150,
+          "defaultValue": 0,
+          "function": "customRepaint"
+        },
+        {
+          "id": "r2",
+          "message": {
+            "type": "sysex",
+            "deviceId": 1,
+            "data": [
+              "41",
+              "00",
+              "45",
+              {
+                "type": "value",
+                "rules": [
+                  {
+                    "type": "sysex",
+                    "parameterNumber": 30,
+                    "parameterBitPosition": 0,
+                    "byteBitPosition": 0,
+                    "bitWidth": 7
+                  }
+                ]
+              },
+              {
+                "type": "checksum",
+                "start": "5",
+                "length": "5",
+                "algorithm": "roland"
+              }
+            ],
+            "parameterNumber": 30,
+            "min": 0,
+            "max": 73
+          },
+          "min": -63,
+          "max": 10,
+          "defaultValue": 0,
+          "function": "customRepaint"
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "fef9b927-22ab-4169-9d76-817f892e9dbb",
+      "reference": 2,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "529DEC",
+      "name": "CUSTOM Overlay",
+      "values": [
+        {
+          "id": "r1",
+          "message": {
+            "type": "sysex",
+            "deviceId": 1,
+            "data": [
+              "41",
+              "00",
+              "44",
+              {
+                "type": "value",
+                "rules": [
+                  {
+                    "type": "sysex",
+                    "parameterNumber": 29,
+                    "parameterBitPosition": 0,
+                    "byteBitPosition": 0,
+                    "bitWidth": 7
+                  }
+                ]
+              },
+              {
+                "type": "checksum",
+                "start": "5",
+                "length": "5",
+                "algorithm": "roland"
+              }
+            ],
+            "parameterNumber": 1,
+            "min": 0,
+            "max": 5
+          },
+          "min": 0,
+          "max": 5,
+          "defaultValue": 0,
+          "function": "customRepaint"
+        },
+        {
+          "id": "r2",
+          "message": {
+            "type": "sysex",
+            "deviceId": 1,
+            "data": [
+              "41",
+              "00",
+              "45",
+              {
+                "type": "value",
+                "rules": [
+                  {
+                    "type": "sysex",
+                    "parameterNumber": 30,
+                    "parameterBitPosition": 0,
+                    "byteBitPosition": 0,
+                    "bitWidth": 7
+                  }
+                ]
+              },
+              {
+                "type": "checksum",
+                "start": "5",
+                "length": "5",
+                "algorithm": "roland"
+              }
+            ],
+            "parameterNumber": 2,
+            "min": 0,
+            "max": 5
+          },
+          "min": 0,
+          "max": 5,
+          "defaultValue": 2,
+          "function": "customRepaint"
+        }
+      ],
+      "visible": true
+    }
+  ],
+  "categories": [],
+  "layouts": [
+    {
+      "id": "mini-4x2",
+      "targetDevice": "mini",
+      "name": "Electra One Mini 4x2",
+      "slots": [],
+      "pages": {}
+    },
+    {
+      "id": "mk2-6x6",
+      "targetDevice": "mk2",
+      "name": "Electra One Mk2 6x6",
+      "slots": [
+        {
+          "id": 6,
+          "tile": {
+            "id": "efa2fdba-add0-48d0-9673-dec62b7ddb77",
+            "slotId": 6,
+            "type": "ref",
+            "tileId": "4712d458-dbef-4b6c-b7bf-2f87ce7fd417"
+          }
+        },
+        {
+          "id": 7,
+          "tile": {
+            "id": "d8dd2f1c-b6af-4ae0-8d9d-90ccd7646e23",
+            "slotId": 7,
+            "type": "ref",
+            "tileId": "c8d42861-1778-4cbc-8ed4-731fc0be5fbb"
+          }
+        },
+        {
+          "id": 8,
+          "tile": {
+            "id": "bdde3b53-3303-4a00-b6da-0e441e965399",
+            "slotId": 8,
+            "type": "ref",
+            "tileId": "fef9b927-22ab-4169-9d76-817f892e9dbb"
+          }
+        }
+      ],
+      "pages": {
+        "1": {
+          "id": "1",
+          "name": "Custom Controls"
+        }
+      }
+    }
+  ],
+  "firstPageId": 1,
+  "_cache_meta": {
+    "source": "electra-one-public",
+    "id": "xXHHSJir8jJHt3P1uWZ6",
+    "revision": "14",
+    "name": "Custom with 2 parms",
+    "fetched_at": "2026-04-13"
+  }
+}

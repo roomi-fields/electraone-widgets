@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 2,
+  "id": "ZChNPfheMT4kuBe79RXG",
+  "name": "multi env encoders",
+  "description": "",
+  "lua": "-- if loop start/end for sustain and loop start/end for release cannot overlap, then use a second custom control across the top\n-- user selects which with button at the bottom then touches above the corresponding points to start/end or\n-- touches and slides to include a section\n\n-- also, possibly be able to overlap Free Env and Wave Env on same screen.  Use button to 'activate' one or the other.\n-- look into displaying time/level values across the top for the stages as a summary.\n\n\n\n-- current plan - store the raw data touch points and then scale that when updating the parameterMap and/or sending out MIDI\n-- incoming data has to be arranged and scaled for the display.  So,\n-- segment times of 0 to 127 get mapped to the grid points starting with x=0,y=height\n-- Preset compatibility check\nassert(\n    controller.isRequired(MODEL_MK2, \"3.6.0\"),\n    \"Version 3.6.0 or higher is required\"\n)\n\ndevId = 0\nportNum = PORT_1\n\n-- Constants\n--\nNUMPTS   =   6\nLOW_MIDI =   0\nHI_MIDI  = 127\n\n-- Index info\nAX  = 1\nAY  = 2\nCLR = 3\n\n-- Colors\nlocal STD_COLOR = 0xB0C0\nlocal ACT_COLOR = 0xFF0000\n\n\n-- Active area dimensions\nlocal XY_PAD_WIDTH = 767\nlocal XY_PAD_HEIGHT = 255\n\n-- Bunch of globals\n--\nlocal envPts = {}\n\nenvPts[0] = {LOW_MIDI, LOW_MIDI, STD_COLOR}\nenvPts[NUMPTS+1] = {HI_MIDI, HI_MIDI, STD_COLOR}\nfor i=1,NUMPTS do\n   envPts[i] = {HI_MIDI, LOW_MIDI+20, STD_COLOR}\nend\nenvPts[1][CLR] = ACT_COLOR\n\nactivePt = 1\n\n-- Shortcut for graphics object\nlocal g = graphics\n\n-- The XY pad control\nlocal xyPadControl = controls.get(4)\nxyPadControl.x = 0\nxyPadControl.y = 0\n\n-- event handling\nevents.subscribe(POTS)\n\nfunction events.onPotTouch(potId, controlId, touched)\n   local valId = 0\n   local ptVal = 0\n   if (potId == 6) then\n      xyPadControl:setPot(CONTROL_SET_3, POT_7)\n      if (activePt ~= NUMPTS+1) then  ptVal = activePt  end\n      valId = xyPadControl:getValue(\"value\")\n      valId:setRange(1,NUMPTS,math.max(ptVal,1),true)\n   elseif (potId == 10) then\n      xyPadControl:setPot(CONTROL_SET_3, POT_11)\n      if (activePt ~= NUMPTS+1) then  ptVal = envPts[activePt][AX]  end\n      valId = xyPadControl:getValue(\"value\")\n      valId:setRange(LOW_MIDI,HI_MIDI,ptVal,true)\n   elseif (potId == 11) then\n      xyPadControl:setPot(CONTROL_SET_3, POT_12)\n      if (activePt ~= NUMPTS+1) then  ptVal = envPts[activePt][AY]  end\n      valId = xyPadControl:getValue(\"value\")\n      valId:setRange(LOW_MIDI,HI_MIDI,ptVal,true)\n   end\nend\n\n-- Initialize the preset\n--\nfunction preset.onLoad()\n    -- Resize the XY Pad (Custom) Control\n    local bounds = xyPadControl:getBounds()\n    bounds[WIDTH] = XY_PAD_WIDTH\n    bounds[HEIGHT] = XY_PAD_HEIGHT\n    xyPadControl:setBounds(bounds)\n\n    -- Assign all Custom Control callbacks\n    xyPadControl:setPaintCallback(paintXyPad)\n    xyPadControl:setTouchCallback(touchCallback)\n    xyPadControl:setPotCallback(potCallback)\n   \n   -- set the range for selecting the active point\n   local valId = xyPadControl:getValue(\"value\")\n   valId:setRange(1,NUMPTS,1,true)\nend\n \n\nfunction printValues()\n   local timeTxt = \"\"\n   local levelTxt = \"\"\n\n   for i=1,NUMPTS do\n      if (i == activePt) then\n         g.setColor(ACT_COLOR)\n      else\n         g.setColor(STD_COLOR)\n      end\n\n      g.print(10+(i*100), 5, string.format(\"T%d: %d \", i, envPts[i][AX]), 10, LEFT)\n      g.print(10+(i*100), 20, string.format(\"L%d: %d \", i, envPts[i][AY]), 10, LEFT)\n   end\n   g.setColor(STD_COLOR)\nend\n\n\n-- A callback to draw the XY pad graphics\n--\nfunction paintXyPad(control, value)\n   local bounds = control:getBounds()\n\n   -- Clear the Control's bounding box\n   g.setColor(0x0000)\n   g.fillRect(0, 0, bounds[WIDTH], bounds[HEIGHT])\n\n   -- Draw the fixed graphics\n   g.setColor(STD_COLOR)\n   g.drawRoundRect(0, 0, bounds[WIDTH], bounds[HEIGHT], 8)\n   \n   -- NOTE that X increase from left to right while Y decrease going from bottom to top\n   --   so, the Y value is subtracted as you increase the MIDI value from 0 to 127\n   -- This is also where scaling needs to be done to fit the MIDI range into the pixel range\n   --   and is dependent on the number of points and the size of the drawing area.\n   local xPos = 0\n   local yPos = XY_PAD_HEIGHT\n   for i=1,NUMPTS do\n      local xScale = envPts[i][AX]\n      local ym1Scale = envPts[i-1][AY] * 2\n      local yScale = envPts[i][AY] * 2\n      g.setColor(envPts[i][CLR])\n      g.fillCircle(xPos + xScale, yPos - yScale, 10)\n      g.setColor(STD_COLOR)\n      g.drawLine(xPos, yPos - ym1Scale, xPos + xScale, yPos - yScale)\n      xPos = xPos + xScale\n   end\n   \n   -- if the context needs a line going from the last point to the edge of the display, this might do it\n   -- g.drawLine(xPos + envPts[NUMPTS][AX], yPos - (envPts[NUMPTS][AY] * 2), XY_PAD_WIDTH-3, XY_PAD_HEIGHT-3)\n\n   printValues()\n\nend\n\n-- A callback to handle an LCD touch\n--\nfunction touchCallback(control, touchEvent)\n   local endPt = NUMPTS+1\n   local tolerance = 25  -- Increased tolerance for touch detection\n \n   if touchEvent.type == MOVE then\n      local preX = 0\n      local postX = 0\n      \n      -- VERIFY that this is OK for the last point\n      for i=1,activePt-1 do  preX = preX + envPts[i][AX]  end\n      postX = preX + envPts[activePt][AX]\n      if (activePt ~= endPt) then\n         postX = postX + envPts[activePt+1][AX]\n      end\n\n      -- CHECK - do we need to add an equal to the greater than, less than checks?\n      if (activePt ~= endPt) and (touchEvent.x >= preX) and (touchEvent.x <= postX) then\n         control.x = touchEvent.x\n         control.y = touchEvent.y\n         -- need to 'unscale' the value here\n         envPts[activePt][AX] = math.min(control.x - preX, HI_MIDI)\n         envPts[activePt][AY] = math.floor((XY_PAD_HEIGHT - control.y) / 2)\n\nprint(\"MOVE: envPts[\" ..  activePt .. \"][AX],[AY] = \" .. envPts[activePt][AX] .. \", \" .. envPts[activePt][AY])\n         parameterMap.set(1,PT_VIRTUAL,9,envPts[activePt][AX])\n         parameterMap.set(1,PT_VIRTUAL,10,envPts[activePt][AY])\n         \n--         control:repaint()\n      end\n   elseif touchEvent.type == DOWN then\n      local i = 1\n      local xPos = 0\n      local yPos = XY_PAD_HEIGHT\n\n      local minDist = math.huge\n      local closestPt = endPt\n\n      while (i < endPt) do\n         local xScale = envPts[i][AX]\n         local yScale = envPts[i][AY] * 2\n\n         local dist = math.sqrt((touchEvent.x - (xPos + xScale))^2 + (touchEvent.y - (yPos - yScale))^2)\n         if dist < minDist then\n            minDist = dist\n            closestPt = i\n         end\n\n         xPos = xPos + xScale\n         i = i + 1\n      end\n\n      if minDist <= tolerance then\n         i = closestPt\n      else\n         i = endPt\n      end\n\n      -- first if statement may result in no points selected\n      -- might be ok, but impacts point select control\n      -- ACTUALLY, it does not hurt to assign things to the endPt location since it a legit array position\n      -- maybe better to just leave it alone until a valid (new) point is selected\n      if (activePt ~= endPt) then  envPts[activePt][CLR] = STD_COLOR  end\n      if (   i     ~= endPt) then  envPts[i][CLR]        = ACT_COLOR  end\n      activePt = i\n      parameterMap.set(1,PT_VIRTUAL,8,math.min(activePt,endPt))\n   end\n\n   control:repaint()\n\nend\n\n-- A callback to handle events on assigned knob\n--\n\n-- NOTE - the callback has no idea what the control range is for the assigned knob\n--        as a result, it is possible to go out of bounds in the delta is not checked.\n-- CURIOSITY CHECK - print out potEvent.type here to see if we always get a touch with the move\n-- if so, maybe do something on the touch to make the move less of a jump sometimes?\n--\nfunction potCallback(control, potEvent)\n   print(\"potEvent.id = \" .. potEvent.id .. \", potEvent.delta = \" .. potEvent.delta)\n   if potEvent.type == MOVE then\n      if (potEvent.id == 6) then\n         local curVal = math.max(1, math.min(activePt + potEvent.delta, NUMPTS))\n\n         envPts[activePt][CLR] = STD_COLOR\n         activePt = curVal\n         envPts[activePt][CLR] = ACT_COLOR\n\n         parameterMap.set(1,PT_VIRTUAL,9,envPts[activePt][AX])\n         parameterMap.set(1,PT_VIRTUAL,10,envPts[activePt][AY])\n         parameterMap.set(1,PT_VIRTUAL,8,activePt)\n\n      elseif (potEvent.id == 10) then\n         envPts[activePt][AX] = math.max(LOW_MIDI, math.min(envPts[activePt][AX] + potEvent.delta, HI_MIDI))\n         parameterMap.set(1,PT_VIRTUAL,9,envPts[activePt][AX])\n      elseif (potEvent.id == 11) then\n         envPts[activePt][AY] = math.max(LOW_MIDI, math.min(envPts[activePt][AY] + potEvent.delta, HI_MIDI))\n         parameterMap.set(1,PT_VIRTUAL,10,envPts[activePt][AY])\n      end\nprint(\"potCallback(): envPts[\" ..  activePt .. \"][AX],[AY] = \" .. envPts[activePt][AX] .. \", \" .. envPts[activePt][AY])\n      control:repaint()\n   end\nend\n\n-- Wave Env params are time then level by stage starting at 125, so\n-- time  params are 125,127,129,131,133,135,137,139 and\n-- level params are 126,128,130,132,134,136,138,140\n\n-- NOTE in the sysex, 4,8,9,10 are reserved (i.e. not used) in any editor context.\n-- Borrow 9 and 10 to use as the base for sending all time and level params\n\n-- bufNum 0x00 = sound edit buffer, 0x20 = multi edit buffer, 0x24 = Global edit buffer\n--        in multi mode, butNum can be 0x01 to 0x08\nbufNum = 0x00\n\nfunction parameterMap.onChange (valueObjects, origin, midiValue)\n\n   -- options here are INTERNAL, MIDI, LUA\n   -- only send if user changes things\n   if (origin == MIDI) then return end\n\n   local paramSysex = {}\n \n   local ctlId = valueObjects[1]:getControl():getId()\n   local pNum = valueObjects[1]:getMessage():getParameterNumber()\n   local hh=0x00\n   local pp=0x00\n\n   if (origin == LUA) and (pNum ~= 9) and (pNum ~= 10) then return end\n   \n   -- create objects with control IDs very high as reserved Parameter Numbers and then\n   --  do not process them.\n\n   if (pNum < 240) then\n      -- Time and Level mapped from 2 controls across 16 variables\n      if (pNum == 9) or (pNum == 10) then\n         pNum = 114 + pNum + (activePt * 2)\n      end\n\n      if (pNum > 127) then\n         hh = 0x01\n      end\n      pp = pNum % 128\n\n      print(\"onChange(): parameter # = \" ..  pp .. \", value = \" .. midiValue)\n\n      paramSysex = {0x3E, 0x0E, devId, 0x20, bufNum, hh, pp, midiValue}\n   elseif (pNum < 293) then\n      pNum = pNum - 260\n      paramSysex = {0x3E, 0x0E, devId, 0x24, pNum, midiValue}\n   else\n      print(\"multi param\")\n   end\n--   midi.sendSysex(portNum, paramSysex)\nend\n\n\n-- formatter functions for point select, x position, and y position\n-- do the display formatting to match the target device here\nfunction dispDot(valueObject,value)\n   if (activePt == NUMPTS+1) then\n      return (\"None\")\n   else\n      return activePt\n   end\nend\n\nfunction dispX(valueObject,value)\n   if (activePt == NUMPTS+1) then\n      return (\" ? \")\n   else\n      return envPts[activePt][AX]\n   end\nend\n\nfunction dispY(valueObject,value)\n   if (activePt == NUMPTS+1) then\n      return (\" ? \")\n   else\n      return envPts[activePt][AY]\n   end\nend\n",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Generic MIDI",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "c679262e-4ca0-4c97-a77c-55df26229cbd",
+      "reference": 4,
+      "slotId": 6,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "F45C51",
+      "name": "Custom X",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 4
+          }
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "f2d82d9e-9953-4240-a004-b1e2b374b947",
+      "reference": 5,
+      "slotId": 66,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Env Stage",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 8,
+            "min": 1,
+            "max": 8
+          },
+          "formatter": "dispDot"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    },
+    {
+      "id": "42985c71-6def-4e4b-af93-bb410420daf5",
+      "reference": 6,
+      "slotId": 70,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "X Pos",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 6,
+            "min": 10,
+            "max": 758
+          },
+          "formatter": "dispX"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    },
+    {
+      "id": "0c8ca285-6ac5-42c1-b06e-7e0d113f3542",
+      "reference": 7,
+      "slotId": 71,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Y Pos",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 7,
+            "min": 10,
+            "max": 256
+          },
+          "formatter": "dispY"
+        }
+      ],
+      "visible": true,
+      "variant": "thin",
+      "mode": "unipolar"
+    }
+  ],
+  "pages": [
+    {
+      "id": 1,
+      "name": "Page 1"
+    }
+  ],
+  "categories": [],
+  "firstPageId": 1,
+  "_cache_meta": {
+    "source": "electra-one-public",
+    "id": "ZChNPfheMT4kuBe79RXG",
+    "revision": "14",
+    "name": "multi env encoders",
+    "fetched_at": "2026-04-13"
+  }
+}

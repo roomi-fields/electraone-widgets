@@ -1,0 +1,542 @@
+{
+  "schemaVersion": 3,
+  "targetDevice": "mini",
+  "id": "eZBSxDFKpnULd4e0we97",
+  "name": "Loopop's Tombola",
+  "description": "Demo of graphics handled in the timer interrupt handler\n\nThe Cube LFO generates a pseudo random series of CC messages according to reading of a projection of X, Y coordinates of one of the cube vertices.\n\n**Note**, it is really meant just to demonstrate handling graphics for Custom Control.",
+  "lua": "-- OP-1 Tombola Style Sequencer for Electra Mini\n-- Rotating polygon container with balls bouncing inside\n-- Balls trigger notes when hitting walls\n\n-- Constants\n--\n\n-- Animation refresh rate (milliseconds)\nlocal REFRESH_RATE = 16  -- ~60 fps\n\n-- Physics constants (will be controlled by MIDI CCs)\nlocal GRAVITY = 0.15           -- CC11: 0-127 maps to 0-0.5\nlocal WALL_BOUNCE = 0.85       -- CC12: 0-127 maps to 0.3-1.0 (bouncy)\nlocal ROTATION_SPEED = 0.005   -- CC13: 0-127 maps to -0.2 to 0.2 (10x faster)\nlocal SPAWN_RATE_MULT = 1.0    -- CC14: 0-127 maps to 0.2-5.0 (faster spawn)\nlocal BALL_LIFETIME_BOUNCES = 10  -- CC103: uses actual CC value (1-127 bounces)\n\nlocal DAMPING = 0.999\nlocal FRICTION = 0.98\n\n-- Container properties\nlocal CONTAINER_SIDES = 6  -- Hexagon\nlocal CONTAINER_BASE_RADIUS = 120\n\n-- Control dimensions (matching original demo style)\nlocal CONTROL_WIDTH = 360\nlocal CONTROL_HEIGHT = 280\n\n-- Ball constants\nlocal MAX_BALLS = 6\nlocal BALL_RADIUS = 10\nlocal BASE_SPAWN_INTERVAL = 180  -- Base frames between auto-spawning\n\n-- Colors (RGB 565) - Bright Pastel Palette\nlocal COLOR_BG = 0x0002\nlocal COLOR_CONTAINER = 0x07FF      -- Bright Cyan\nlocal COLOR_WALL_HIT = 0xFFE0       -- Bright Yellow\nlocal COLOR_BALL_1 = 0xFD5F         -- Pastel Pink\nlocal COLOR_BALL_2 = 0x87F0         -- Pastel Green\nlocal COLOR_BALL_3 = 0xFDAA         -- Pastel Orange\nlocal COLOR_BALL_4 = 0x857F         -- Pastel Blue\nlocal COLOR_BALL_5 = 0xF7FE         -- Pastel Yellow\nlocal COLOR_BALL_6 = 0xBDFF         -- Pastel Purple\n\n-- MIDI notes for each wall segment (supports up to 12 sides)\n-- Multiple scale options - will be randomized with CC105\nlocal SCALES = {\n    {name = \"C Minor Pentatonic\", notes = {60, 63, 65, 67, 70, 72, 75, 77, 79, 82, 84, 86}},\n    {name = \"C Major Pentatonic\", notes = {60, 62, 64, 67, 69, 72, 74, 76, 79, 81, 84, 86}},\n    {name = \"C Blues Scale\", notes = {60, 63, 65, 66, 67, 70, 72, 75, 77, 78, 79, 82}},\n    {name = \"C Dorian\", notes = {60, 62, 63, 65, 67, 69, 70, 72, 74, 75, 77, 79}},\n    {name = \"C Phrygian\", notes = {60, 61, 63, 65, 67, 68, 70, 72, 73, 75, 77, 79}},\n    {name = \"C Lydian\", notes = {60, 62, 64, 66, 67, 69, 71, 72, 74, 76, 78, 79}},\n    {name = \"C Mixolydian\", notes = {60, 62, 64, 65, 67, 69, 70, 72, 74, 76, 77, 79}},\n    {name = \"C Harmonic Minor\", notes = {60, 62, 63, 65, 67, 68, 71, 72, 74, 75, 77, 79}},\n    {name = \"C Hungarian Minor\", notes = {60, 62, 63, 66, 67, 68, 71, 72, 74, 75, 78, 79}},\n    {name = \"C Whole Tone\", notes = {60, 62, 64, 66, 68, 70, 72, 74, 76, 78, 80, 82}},\n    {name = \"C Hirajoshi\", notes = {60, 62, 63, 67, 68, 72, 74, 75, 79, 80, 84, 86}},\n    {name = \"C Byzantine\", notes = {60, 61, 64, 65, 67, 68, 71, 72, 73, 76, 77, 79}},\n    {name = \"C Chromatic\", notes = {60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71}}\n}\n\nlocal CURRENT_SCALE_INDEX = 1  -- Start with C Minor Pentatonic\nlocal WALL_NOTES = SCALES[CURRENT_SCALE_INDEX].notes\n\n-- Note off timing (frames)\nlocal NOTE_OFF_DELAY = 8\n\n-- Global variables\n--\n\n-- Shortcut for graphics object\nlocal g = graphics\n\n-- Main custom control\nlocal mainControl = controls.get(1)\n\n-- Display dimensions (fixed like original demo)\nmainControl.width = CONTROL_WIDTH\nmainControl.height = CONTROL_HEIGHT\nmainControl.centerX = CONTROL_WIDTH / 2\nmainControl.centerY = CONTROL_HEIGHT / 2\n\n-- Container rotation angle\nmainControl.rotation = 0\n\n-- Container vertices (will be calculated)\nmainControl.vertices = {}\nmainControl.walls = {}  -- Each wall has two vertex indices\n\n-- Ball objects array\nmainControl.balls = {}\n\n-- Frame counter\nmainControl.frameCount = 0\nmainControl.spawnTimer = 0\n\n-- Wall hit tracking\nmainControl.wallHitFrames = {}\n\n-- Active notes tracking for note offs\nmainControl.activeNotes = {}\n\n-- CC message display (for debugging)\nmainControl.recentCCs = {}  -- Store recent CC messages: {cc, value, framesLeft}\n\n-- Scale display tracking\nmainControl.scaleDisplayFrames = 180  -- Show initial scale for 3 seconds\n\n-- Ball colors\nlocal BALL_COLORS = {COLOR_BALL_1, COLOR_BALL_2, COLOR_BALL_3, COLOR_BALL_4, COLOR_BALL_5, COLOR_BALL_6}\n\n-- Ball object constructor\n--\nfunction createBall(x, y, colorIndex)\n    return {\n        x = x,\n        y = y,\n        vx = (math.random() - 0.5) * 4,\n        vy = (math.random() - 0.5) * 2,\n        radius = BALL_RADIUS,\n        active = true,\n        color = BALL_COLORS[colorIndex] or COLOR_BALL_1,\n        trail = {},\n        bounceCount = 0,  -- Track number of bounces\n        maxBounces = BALL_LIFETIME_BOUNCES  -- Max bounces before disappearing\n    }\nend\n\n-- Calculate container vertices based on rotation\n--\nfunction updateContainerVertices()\n    mainControl.vertices = {}\n    local angle = mainControl.rotation\n    local radius = CONTAINER_BASE_RADIUS\n    \n    for i = 0, CONTAINER_SIDES - 1 do\n        local vertexAngle = angle + (i * 2 * math.pi / CONTAINER_SIDES)\n        local x = mainControl.centerX + radius * math.cos(vertexAngle)\n        local y = mainControl.centerY + radius * math.sin(vertexAngle)\n        table.insert(mainControl.vertices, {x = x, y = y})\n    end\n    \n    -- Define walls (pairs of vertices)\n    mainControl.walls = {}\n    for i = 1, CONTAINER_SIDES do\n        local nextIndex = (i % CONTAINER_SIDES) + 1\n        -- Wrap note index if we have more sides than notes\n        local noteIndex = ((i - 1) % #WALL_NOTES) + 1\n        table.insert(mainControl.walls, {v1 = i, v2 = nextIndex, note = WALL_NOTES[noteIndex]})\n    end\nend\n\n-- Initialize container\n--\nfunction initializeContainer()\n    -- Clear and reinitialize wall hit frames for new number of sides\n    mainControl.wallHitFrames = {}\n    for i = 1, CONTAINER_SIDES do\n        mainControl.wallHitFrames[i] = 0\n    end\n    updateContainerVertices()\nend\n\n-- Spawn a new ball\n--\nfunction spawnBall()\n    if #mainControl.balls < MAX_BALLS then\n        local colorIndex = (#mainControl.balls % #BALL_COLORS) + 1\n        local spawnX = mainControl.centerX + (math.random() - 0.5) * 60\n        local spawnY = mainControl.centerY - 40\n        table.insert(mainControl.balls, createBall(spawnX, spawnY, colorIndex))\n    end\nend\n\n-- Check if point is inside polygon (for boundary checking)\n--\nfunction pointInPolygon(x, y)\n    local vertices = mainControl.vertices\n    local inside = false\n    local j = #vertices\n    \n    for i = 1, #vertices do\n        local xi, yi = vertices[i].x, vertices[i].y\n        local xj, yj = vertices[j].x, vertices[j].y\n        \n        if ((yi > y) ~= (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi) then\n            inside = not inside\n        end\n        j = i\n    end\n    \n    return inside\nend\n\n-- Get distance from point to line segment\n--\nfunction pointToSegmentDistance(px, py, x1, y1, x2, y2)\n    local dx = x2 - x1\n    local dy = y2 - y1\n    local lengthSquared = dx * dx + dy * dy\n    \n    if lengthSquared == 0 then\n        return math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1))\n    end\n    \n    local t = math.max(0, math.min(1, ((px - x1) * dx + (py - y1) * dy) / lengthSquared))\n    local projX = x1 + t * dx\n    local projY = y1 + t * dy\n    \n    return math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY)), projX, projY\nend\n\n-- Check and handle wall collisions\n--\nfunction checkWallCollisions(ball)\n    -- Track if we've already counted a bounce this frame\n    local bouncedThisFrame = false\n    \n    for wallIndex, wall in ipairs(mainControl.walls) do\n        local v1 = mainControl.vertices[wall.v1]\n        local v2 = mainControl.vertices[wall.v2]\n        \n        local dist, projX, projY = pointToSegmentDistance(ball.x, ball.y, v1.x, v1.y, v2.x, v2.y)\n        \n        if dist < ball.radius then\n            -- Collision detected\n            -- Calculate wall normal\n            local wallDx = v2.x - v1.x\n            local wallDy = v2.y - v1.y\n            local wallLength = math.sqrt(wallDx * wallDx + wallDy * wallDy)\n            \n            -- Normal perpendicular to wall (pointing inward)\n            local normalX = -wallDy / wallLength\n            local normalY = wallDx / wallLength\n            \n            -- Check which side we're on\n            local centerDx = mainControl.centerX - projX\n            local centerDy = mainControl.centerY - projY\n            local dotProduct = normalX * centerDx + normalY * centerDy\n            \n            if dotProduct < 0 then\n                normalX = -normalX\n                normalY = -normalY\n            end\n            \n            -- Push ball away from wall\n            local pushDistance = ball.radius - dist\n            ball.x = ball.x + normalX * pushDistance\n            ball.y = ball.y + normalY * pushDistance\n            \n            -- Reflect velocity\n            local velDot = ball.vx * normalX + ball.vy * normalY\n            ball.vx = (ball.vx - 2 * velDot * normalX) * WALL_BOUNCE\n            ball.vy = (ball.vy - 2 * velDot * normalY) * WALL_BOUNCE\n            \n            -- Count bounce (only once per frame)\n            if not bouncedThisFrame then\n                ball.bounceCount = ball.bounceCount + 1\n                bouncedThisFrame = true\n                \n                -- Check if ball has exceeded max bounces\n                if ball.bounceCount >= ball.maxBounces then\n                    ball.active = false\n                    print(\"Ball removed after \" .. ball.bounceCount .. \" bounces (max: \" .. ball.maxBounces .. \")\")\n                end\n            end\n            \n            -- Trigger note if significant collision\n            if math.abs(velDot) > 0.5 then\n                sendNote(wall.note, wallIndex, math.min(127, math.floor(math.abs(velDot) * 30 + 40)))\n                mainControl.wallHitFrames[wallIndex] = 12\n            end\n        end\n    end\nend\n\n-- Update ball physics\n--\nfunction updateBall(ball)\n    -- Apply gravity downward (towards bottom of screen)\n    -- When GRAVITY is 0, no pull. When GRAVITY is max, strong downward pull\n    ball.vy = ball.vy + GRAVITY\n    \n    -- Apply friction/damping\n    ball.vx = ball.vx * DAMPING\n    ball.vy = ball.vy * DAMPING\n    \n    -- Update position\n    ball.x = ball.x + ball.vx\n    ball.y = ball.y + ball.vy\n    \n    -- Store trail\n    table.insert(ball.trail, {x = ball.x, y = ball.y})\n    if #ball.trail > 4 then\n        table.remove(ball.trail, 1)\n    end\n    \n    -- Check wall collisions\n    checkWallCollisions(ball)\nend\n\n-- Update physics\n--\nfunction updatePhysics()\n    -- Rotate container\n    mainControl.rotation = mainControl.rotation + ROTATION_SPEED\n    updateContainerVertices()\n    \n    -- Update balls\n    for i = #mainControl.balls, 1, -1 do\n        local ball = mainControl.balls[i]\n        if ball.active then\n            updateBall(ball)\n        else\n            table.remove(mainControl.balls, i)\n        end\n    end\n    \n    -- Decay wall hit indicators\n    for i = 1, CONTAINER_SIDES do\n        if mainControl.wallHitFrames[i] > 0 then\n            mainControl.wallHitFrames[i] = mainControl.wallHitFrames[i] - 1\n        end\n    end\n    \n    -- Decay CC message display\n    for i = #mainControl.recentCCs, 1, -1 do\n        mainControl.recentCCs[i].framesLeft = mainControl.recentCCs[i].framesLeft - 1\n        if mainControl.recentCCs[i].framesLeft <= 0 then\n            table.remove(mainControl.recentCCs, i)\n        end\n    end\n    \n    -- Decay scale name display\n    if mainControl.scaleDisplayFrames > 0 then\n        mainControl.scaleDisplayFrames = mainControl.scaleDisplayFrames - 1\n    end\n    \n    -- Handle note offs\n    for i = #mainControl.activeNotes, 1, -1 do\n        local noteInfo = mainControl.activeNotes[i]\n        noteInfo.framesRemaining = noteInfo.framesRemaining - 1\n        if noteInfo.framesRemaining <= 0 then\n            midi.sendNoteOff(PORT_1, 1, noteInfo.note, 0)  -- USB Device\n            midi.sendNoteOff(PORT_2, 1, noteInfo.note, 0)  -- 3.5mm MIDI jack\n            table.remove(mainControl.activeNotes, i)\n        end\n    end\n    \n    -- Auto-spawn balls (rate controlled by SPAWN_RATE_MULT)\n    mainControl.spawnTimer = mainControl.spawnTimer + 1\n    local currentSpawnInterval = BASE_SPAWN_INTERVAL / SPAWN_RATE_MULT\n    if mainControl.spawnTimer >= currentSpawnInterval then\n        spawnBall()\n        mainControl.spawnTimer = 0\n    end\nend\n\n-- Set dimensions of the control\n--\nfunction mainControl:setDimensions(width, height)\n    local bounds = self:getBounds()\n    bounds[WIDTH] = width\n    bounds[HEIGHT] = height\n    self:setBounds(bounds)\n    self.width = width\n    self.height = height\n    self.centerX = width / 2\n    self.centerY = height / 2\nend\n\n-- Send MIDI note with note off tracking\n-- Omitting the port argument sends to ALL interfaces (USB + 3.5mm jack)\n--\nfunction sendNote(note, wallIndex, velocity)\n    midi.sendNoteOn(PORT_1, 1, note, velocity)   -- USB Device\n    midi.sendNoteOn(PORT_2, 1, note, velocity)   -- 3.5mm MIDI jack\n    table.insert(mainControl.activeNotes, {\n        note = note,\n        framesRemaining = NOTE_OFF_DELAY\n    })\nend\n\n-- Paint the main control\n--\nfunction paintMainControl(control)\n    local bounds = control:getBounds()\n    local width = bounds[WIDTH]\n    local height = bounds[HEIGHT]\n    \n    -- Clear background\n    g.setColor(COLOR_BG)\n    g.fillRect(0, 0, width, height)\n    \n    -- Draw container\n    drawContainer()\n    \n    -- Draw balls\n    drawBalls()\n    \n    -- Draw CC messages (for debugging)\n    drawCCMessages()\nend\n\n-- Draw the rotating container\n--\nfunction drawContainer()\n    for wallIndex, wall in ipairs(mainControl.walls) do\n        local v1 = mainControl.vertices[wall.v1]\n        local v2 = mainControl.vertices[wall.v2]\n        \n        -- Choose color based on hit state\n        if mainControl.wallHitFrames[wallIndex] > 0 then\n            g.setColor(COLOR_WALL_HIT)\n        else\n            g.setColor(COLOR_CONTAINER)\n        end\n        \n        -- Draw wall line (thick)\n        for offset = -2, 2 do\n            g.drawLine(\n                math.floor(v1.x + offset),\n                math.floor(v1.y),\n                math.floor(v2.x + offset),\n                math.floor(v2.y)\n            )\n        end\n    end\nend\n\n-- Draw all balls\n--\nfunction drawBalls()\n    for _, ball in ipairs(mainControl.balls) do\n        -- Draw trail\n        for trailIndex, pos in ipairs(ball.trail) do\n            local alpha = trailIndex / #ball.trail\n            local radius = math.floor(ball.radius * alpha * 0.5)\n            if radius > 0 then\n                g.setColor(ball.color)\n                g.fillCircle(math.floor(pos.x), math.floor(pos.y), radius)\n            end\n        end\n        \n        -- Draw ball\n        g.setColor(ball.color)\n        g.fillCircle(math.floor(ball.x), math.floor(ball.y), ball.radius)\n    end\nend\n\n-- Draw recent CC messages and scale name (for debugging)\n--\nfunction drawCCMessages()\n    local yPos = 10\n    \n    -- Draw scale name if active\n    if mainControl.scaleDisplayFrames > 0 then\n        local scaleName = SCALES[CURRENT_SCALE_INDEX].name\n        \n        -- Calculate box size based on text length\n        local boxWidth = #scaleName * 6 + 20\n        local boxHeight = 25\n        \n        -- Draw background box for scale name\n        g.setColor(0x0000)  -- Black background\n        g.fillRect(5, 5, boxWidth, boxHeight)\n        \n        -- Draw border\n        g.setColor(COLOR_CONTAINER)  -- Cyan border\n        g.drawLine(5, 5, 5 + boxWidth, 5)\n        g.drawLine(5, 5 + boxHeight, 5 + boxWidth, 5 + boxHeight)\n        g.drawLine(5, 5, 5, 5 + boxHeight)\n        g.drawLine(5 + boxWidth, 5, 5 + boxWidth, 5 + boxHeight)\n        \n        -- Draw scale name text\n        drawText(10, 12, scaleName, COLOR_BALL_1)  -- Magenta/Pink text\n        \n        yPos = 40  -- Move CC messages down\n    end\n    \n    -- Draw CC messages\n    for i, ccMsg in ipairs(mainControl.recentCCs) do\n        if ccMsg.framesLeft > 0 then\n            -- Draw background box\n            g.setColor(0x2104)  -- Dark gray background\n            g.fillRect(10, yPos, 100, 15)\n            \n            -- Draw CC info\n            local ccText = \"CC\" .. ccMsg.cc .. \":\" .. ccMsg.value\n            drawText(15, yPos + 4, ccText, COLOR_WALL_HIT)  -- Yellow text\n            \n            yPos = yPos + 20\n        end\n    end\nend\n\n-- Simple bitmap font for drawing text (5x7 pixels per character)\n-- Each character is represented as a table of pixel rows\nlocal FONT = {\n    [\" \"] = {0,0,0,0,0,0,0},\n    [\"A\"] = {0x0E,0x11,0x11,0x1F,0x11,0x11,0x11},\n    [\"B\"] = {0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E},\n    [\"C\"] = {0x0E,0x11,0x10,0x10,0x10,0x11,0x0E},\n    [\"D\"] = {0x1E,0x11,0x11,0x11,0x11,0x11,0x1E},\n    [\"E\"] = {0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F},\n    [\"F\"] = {0x1F,0x10,0x10,0x1E,0x10,0x10,0x10},\n    [\"G\"] = {0x0E,0x11,0x10,0x17,0x11,0x11,0x0F},\n    [\"H\"] = {0x11,0x11,0x11,0x1F,0x11,0x11,0x11},\n    [\"I\"] = {0x0E,0x04,0x04,0x04,0x04,0x04,0x0E},\n    [\"J\"] = {0x01,0x01,0x01,0x01,0x11,0x11,0x0E},\n    [\"K\"] = {0x11,0x12,0x14,0x18,0x14,0x12,0x11},\n    [\"L\"] = {0x10,0x10,0x10,0x10,0x10,0x10,0x1F},\n    [\"M\"] = {0x11,0x1B,0x15,0x15,0x11,0x11,0x11},\n    [\"N\"] = {0x11,0x19,0x15,0x13,0x11,0x11,0x11},\n    [\"O\"] = {0x0E,0x11,0x11,0x11,0x11,0x11,0x0E},\n    [\"P\"] = {0x1E,0x11,0x11,0x1E,0x10,0x10,0x10},\n    [\"R\"] = {0x1E,0x11,0x11,0x1E,0x14,0x12,0x11},\n    [\"S\"] = {0x0E,0x11,0x10,0x0E,0x01,0x11,0x0E},\n    [\"T\"] = {0x1F,0x04,0x04,0x04,0x04,0x04,0x04},\n    [\"U\"] = {0x11,0x11,0x11,0x11,0x11,0x11,0x0E},\n    [\"W\"] = {0x11,0x11,0x11,0x15,0x15,0x1B,0x11},\n    [\"X\"] = {0x11,0x11,0x0A,0x04,0x0A,0x11,0x11},\n    [\"Y\"] = {0x11,0x11,0x0A,0x04,0x04,0x04,0x04},\n    [\"Z\"] = {0x1F,0x01,0x02,0x04,0x08,0x10,0x1F},\n    [\"a\"] = {0x00,0x00,0x0E,0x01,0x0F,0x11,0x0F},\n    [\"b\"] = {0x10,0x10,0x1E,0x11,0x11,0x11,0x1E},\n    [\"c\"] = {0x00,0x00,0x0E,0x10,0x10,0x10,0x0E},\n    [\"d\"] = {0x01,0x01,0x0F,0x11,0x11,0x11,0x0F},\n    [\"e\"] = {0x00,0x00,0x0E,0x11,0x1F,0x10,0x0E},\n    [\"f\"] = {0x06,0x09,0x08,0x1E,0x08,0x08,0x08},\n    [\"g\"] = {0x00,0x00,0x0F,0x11,0x11,0x0F,0x01,0x0E},\n    [\"h\"] = {0x10,0x10,0x1E,0x11,0x11,0x11,0x11},\n    [\"i\"] = {0x04,0x00,0x0C,0x04,0x04,0x04,0x0E},\n    [\"j\"] = {0x02,0x00,0x06,0x02,0x02,0x12,0x0C},\n    [\"k\"] = {0x10,0x10,0x12,0x14,0x18,0x14,0x12},\n    [\"l\"] = {0x0C,0x04,0x04,0x04,0x04,0x04,0x0E},\n    [\"m\"] = {0x00,0x00,0x1A,0x15,0x15,0x15,0x11},\n    [\"n\"] = {0x00,0x00,0x1E,0x11,0x11,0x11,0x11},\n    [\"o\"] = {0x00,0x00,0x0E,0x11,0x11,0x11,0x0E},\n    [\"p\"] = {0x00,0x00,0x1E,0x11,0x11,0x1E,0x10,0x10},\n    [\"q\"] = {0x00,0x00,0x0F,0x11,0x11,0x0F,0x01,0x01},\n    [\"r\"] = {0x00,0x00,0x16,0x19,0x10,0x10,0x10},\n    [\"s\"] = {0x00,0x00,0x0F,0x10,0x0E,0x01,0x1E},\n    [\"t\"] = {0x04,0x04,0x1F,0x04,0x04,0x04,0x03},\n    [\"u\"] = {0x00,0x00,0x11,0x11,0x11,0x13,0x0D},\n    [\"v\"] = {0x00,0x00,0x11,0x11,0x11,0x0A,0x04},\n    [\"w\"] = {0x00,0x00,0x11,0x11,0x15,0x15,0x0A},\n    [\"x\"] = {0x00,0x00,0x11,0x0A,0x04,0x0A,0x11},\n    [\"y\"] = {0x00,0x00,0x11,0x11,0x0A,0x04,0x08},\n    [\"z\"] = {0x00,0x00,0x1F,0x02,0x04,0x08,0x1F},\n}\n\n-- Draw a character at position (x, y) with given color\n--\nfunction drawChar(x, y, char, color)\n    local glyph = FONT[char]\n    if not glyph then return 6 end  -- Return width and skip unknown chars\n    \n    g.setColor(color)\n    for row = 1, 7 do\n        local rowData = glyph[row]\n        for col = 0, 4 do\n            if (rowData & (1 << (4 - col))) ~= 0 then\n                g.fillRect(x + col, y + row - 1, 1, 1)\n            end\n        end\n    end\n    return 6  -- Return character width (5 pixels + 1 spacing)\nend\n\n-- Draw a text string at position (x, y)\n--\nfunction drawText(x, y, text, color)\n    local xPos = x\n    for i = 1, #text do\n        local char = text:sub(i, i)\n        xPos = xPos + drawChar(xPos, y, char, color)\n    end\nend\n\n-- Simple text drawing using fillRect (very basic, just for numbers)\n--\n\n-- Initialize the preset\n--\nfunction preset.onLoad()\n    -- Set control dimensions (like original demo)\n    mainControl:setDimensions(CONTROL_WIDTH, CONTROL_HEIGHT)\n    \n    -- Initialize container\n    initializeContainer()\n    \n    -- Register paint callback\n    mainControl:setPaintCallback(paintMainControl)\n    \n    -- Spawn initial balls\n    for i = 1, 3 do\n        spawnBall()\n    end\n    \n    -- Start timer\n    timer.setPeriod(REFRESH_RATE)\n    timer.enable()\nend\n\n-- Randomize to a new scale\n--\nfunction randomizeScale()\n    local newIndex = math.random(1, #SCALES)\n    CURRENT_SCALE_INDEX = newIndex\n    WALL_NOTES = SCALES[CURRENT_SCALE_INDEX].notes\n    \n    -- Update walls with new notes\n    initializeContainer()\n    \n    -- Show scale name for 3 seconds\n    mainControl.scaleDisplayFrames = 180  -- 3 seconds at 60fps\n    \n    -- Log to console\n    print(\"========================================\")\n    print(\"SCALE CHANGED: \" .. SCALES[CURRENT_SCALE_INDEX].name)\n    print(\"========================================\")\nend\n\n-- Record CC message for on-screen display\n--\nfunction recordCCMessage(cc, value)\n    -- Add to beginning of list\n    table.insert(mainControl.recentCCs, 1, {\n        cc = cc,\n        value = value,\n        framesLeft = 60  -- Display for 1 second (60 frames at 60fps)\n    })\n    \n    -- Keep only last 5 messages\n    while #mainControl.recentCCs > 5 do\n        table.remove(mainControl.recentCCs)\n    end\nend\n\n-- Helper function to get message details\n--\nfunction getTypeParameterAndValue(vo)\n    return vo:getMessage():getType(),\n        vo:getMessage():getParameterNumber(),\n        vo:getMessage():getValue()\nend\n\n-- Handle parameter changes\n--\nfunction parameterMap.onChange(valueObjects, origin, midiValue)\n    for _, valueObject in ipairs(valueObjects) do\n        local type, parameterNumber, value = getTypeParameterAndValue(valueObject)\n        \n        -- Record CC message for on-screen display\n        if type == PT_CC7 then\n            recordCCMessage(parameterNumber, value)\n        end\n        \n        -- Log received messages for debugging\n        print(\"Received: type=\" .. type .. \" param=\" .. parameterNumber .. \" value=\" .. value)\n        \n        -- Handle CC7 messages (MIDI CC 11, 12, 13, 14, 101)\n        if type == PT_CC7 then\n            if parameterNumber == 11 then\n                -- CC11: Gravity (0-127 \u2192 0 to 0.5)\n                GRAVITY = (value / 127) * 0.5\n                print(\"Set GRAVITY to \" .. GRAVITY)\n            elseif parameterNumber == 12 then\n                -- CC12: Bounce (0-127 \u2192 0.3 to 1.0)\n                WALL_BOUNCE = 0.3 + (value / 127) * 0.7\n                print(\"Set WALL_BOUNCE to \" .. WALL_BOUNCE)\n            elseif parameterNumber == 13 then\n                -- CC13: Rotation Speed (0-127 \u2192 -0.2 to 0.2) - 10x faster!\n                -- 0 = fast reverse, 64 = stop, 127 = fast forward\n                ROTATION_SPEED = ((value / 127) - 0.5) * 0.4\n                print(\"Set ROTATION_SPEED to \" .. ROTATION_SPEED)\n            elseif parameterNumber == 14 then\n                -- CC14: Spawn Rate (0-127 \u2192 0.2 to 5.0)\n                SPAWN_RATE_MULT = 0.2 + (value / 127) * 4.8\n                print(\"Set SPAWN_RATE_MULT to \" .. SPAWN_RATE_MULT)\n            elseif parameterNumber == 101 then\n                -- CC101: Number of vertices (0-127 \u2192 3 to 12 sides)\n                -- Map: 0-12=3, 13-26=4, 27-40=5, etc.\n                local newSides = 3 + math.floor((value / 127) * 10)\n                newSides = math.min(12, math.max(3, newSides))  -- Clamp to 3-12\n                print(\"CC101 received: value=\" .. value .. \" calculated sides=\" .. newSides)\n                CONTAINER_SIDES = newSides\n                initializeContainer()\n                print(\"Set CONTAINER_SIDES to \" .. CONTAINER_SIDES)\n            elseif parameterNumber == 103 then\n                -- CC103: Ball lifetime in bounces (use actual CC value: 0-127)\n                BALL_LIFETIME_BOUNCES = math.max(1, value)  -- Use CC value directly, minimum 1\n                print(\"Set BALL_LIFETIME_BOUNCES to \" .. BALL_LIFETIME_BOUNCES)\n            elseif parameterNumber == 104 then\n                -- CC104: Speed boost - permanently increase ball speeds\n                if value > 0 then\n                    -- Give all current balls a permanent speed increase\n                    local boostAmount = (value / 127) * 3  -- Scale boost based on CC value\n                    for _, ball in ipairs(mainControl.balls) do\n                        if ball.active then\n                            -- Increase speed in current direction\n                            local currentSpeed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)\n                            if currentSpeed > 0.1 then\n                                -- Boost in direction of movement\n                                local dirX = ball.vx / currentSpeed\n                                local dirY = ball.vy / currentSpeed\n                                ball.vx = ball.vx + dirX * boostAmount\n                                ball.vy = ball.vy + dirY * boostAmount\n                            else\n                                -- If nearly stopped, give random boost\n                                ball.vx = ball.vx + (math.random() - 0.5) * boostAmount\n                                ball.vy = ball.vy + (math.random() - 0.5) * boostAmount\n                            end\n                        end\n                    end\n                    print(\"SPEED BOOST! (\" .. boostAmount .. \") Applied to \" .. #mainControl.balls .. \" balls\")\n                end\n            elseif parameterNumber == 105 then\n                -- CC105: Randomize scale (trigger at value 127)\n                if value == 127 then\n                    randomizeScale()\n                end\n            end\n        end\n        \n        -- Handle Virtual parameters (also check for 11-14 and 101 in case they're virtual)\n        if type == PT_VIRTUAL then\n            if parameterNumber == 11 then\n                -- Gravity\n                GRAVITY = (value / 127) * 0.5\n                print(\"Set GRAVITY to \" .. GRAVITY)\n            elseif parameterNumber == 12 then\n                -- Bounce\n                WALL_BOUNCE = 0.3 + (value / 127) * 0.7\n                print(\"Set WALL_BOUNCE to \" .. WALL_BOUNCE)\n            elseif parameterNumber == 13 then\n                -- Rotation Speed (10x faster)\n                ROTATION_SPEED = ((value / 127) - 0.5) * 0.4\n                print(\"Set ROTATION_SPEED to \" .. ROTATION_SPEED)\n            elseif parameterNumber == 14 then\n                -- Spawn Rate\n                SPAWN_RATE_MULT = 0.2 + (value / 127) * 4.8\n                print(\"Set SPAWN_RATE_MULT to \" .. SPAWN_RATE_MULT)\n            elseif parameterNumber == 101 then\n                -- Number of vertices\n                local newSides = 3 + math.floor((value / 127) * 10)\n                newSides = math.min(12, math.max(3, newSides))  -- Clamp to 3-12\n                print(\"Virtual 101 received: value=\" .. value .. \" calculated sides=\" .. newSides)\n                CONTAINER_SIDES = newSides\n                initializeContainer()\n                print(\"Set CONTAINER_SIDES to \" .. CONTAINER_SIDES)\n            elseif parameterNumber == 103 then\n                -- Ball lifetime in bounces (use actual value: 0-127)\n                BALL_LIFETIME_BOUNCES = math.max(1, value)  -- Use value directly, minimum 1\n                print(\"Set BALL_LIFETIME_BOUNCES to \" .. BALL_LIFETIME_BOUNCES)\n            elseif parameterNumber == 104 then\n                -- Speed boost - permanently increase ball speeds\n                if value > 0 then\n                    -- Give all current balls a permanent speed increase\n                    local boostAmount = (value / 127) * 3  -- Scale boost based on value\n                    for _, ball in ipairs(mainControl.balls) do\n                        if ball.active then\n                            -- Increase speed in current direction\n                            local currentSpeed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)\n                            if currentSpeed > 0.1 then\n                                -- Boost in direction of movement\n                                local dirX = ball.vx / currentSpeed\n                                local dirY = ball.vy / currentSpeed\n                                ball.vx = ball.vx + dirX * boostAmount\n                                ball.vy = ball.vy + dirY * boostAmount\n                            else\n                                -- If nearly stopped, give random boost\n                                ball.vx = ball.vx + (math.random() - 0.5) * boostAmount\n                                ball.vy = ball.vy + (math.random() - 0.5) * boostAmount\n                            end\n                        end\n                    end\n                    print(\"SPEED BOOST! (\" .. boostAmount .. \") Applied to \" .. #mainControl.balls .. \" balls\")\n                end\n            elseif parameterNumber == 105 then\n                -- Randomize scale\n                if value == 127 then\n                    randomizeScale()\n                end\n            elseif parameterNumber == 1 then\n                -- Number of container sides (backup control)\n                CONTAINER_SIDES = math.floor(3 + (value / 127) * 5)  -- 3-8 sides\n                initializeContainer()\n            elseif parameterNumber == 2 then\n                -- Spawn ball\n                if value > 64 then\n                    spawnBall()\n                end\n            elseif parameterNumber == 3 then\n                -- Clear balls\n                if value > 64 then\n                    mainControl.balls = {}\n                end\n            end\n        end\n    end\nend\n\n-- Timer callback\n--\nfunction timer.onTick()\n    mainControl.frameCount = mainControl.frameCount + 1\n    updatePhysics()\n    mainControl:repaint()\nend\n\n",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Generic MIDI",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "42efc273-8ac9-4487-9e65-b8de29754b8f",
+      "reference": 2,
+      "type": "label",
+      "name": "Tombola",
+      "color": "ffffff",
+      "span": 4,
+      "vspan": 0
+    },
+    {
+      "id": "4de45f17-52da-4be9-a360-6adc9ac9c3a4",
+      "reference": 1,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Custom",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 100
+          }
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "7af37b5c-e813-4da5-b552-b8c7a0829852",
+      "reference": 3,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Gravity",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 11,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 100,
+          "defaultValue": 10
+        }
+      ],
+      "visible": true,
+      "variant": "dial",
+      "mode": "unipolar"
+    },
+    {
+      "id": "5e0e5384-d1c5-48fa-b812-5f762d971567",
+      "reference": 14,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Bounce",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 12,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 100,
+          "defaultValue": 10
+        }
+      ],
+      "visible": true,
+      "variant": "dial",
+      "mode": "unipolar"
+    },
+    {
+      "id": "726cf3b4-7ef7-4212-971d-18e42dc62a55",
+      "reference": 4,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Speed",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 13,
+            "min": 0,
+            "max": 127
+          },
+          "min": -50,
+          "max": 50,
+          "defaultValue": 10
+        }
+      ],
+      "visible": true,
+      "variant": "dial",
+      "mode": ""
+    },
+    {
+      "id": "7c3768da-b53b-4967-9703-af5e2545bb22",
+      "reference": 5,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Spawn rate",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 14,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 100,
+          "defaultValue": 10
+        }
+      ],
+      "visible": true,
+      "variant": "dial",
+      "mode": "unipolar"
+    },
+    {
+      "id": "27449a6a-dbf7-4751-bc13-95675b6303a9",
+      "reference": 6,
+      "type": "list",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "# of notes",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 101
+          },
+          "textValues": [
+            {
+              "value": 0,
+              "label": "3"
+            },
+            {
+              "value": 13,
+              "label": "4"
+            },
+            {
+              "value": 26,
+              "label": "5"
+            },
+            {
+              "value": 39,
+              "label": "6"
+            },
+            {
+              "value": 53,
+              "label": "7"
+            },
+            {
+              "value": 66,
+              "label": "8"
+            },
+            {
+              "value": 79,
+              "label": "9"
+            },
+            {
+              "value": 92,
+              "label": "10"
+            },
+            {
+              "value": 105,
+              "label": "11"
+            },
+            {
+              "value": 118,
+              "label": "12"
+            }
+          ]
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "25c4f71e-79ea-4462-9c0c-938907da9ade",
+      "reference": 8,
+      "type": "list",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Life Span",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 103
+          },
+          "textValues": [
+            {
+              "value": 3,
+              "label": "3"
+            },
+            {
+              "value": 5,
+              "label": "5"
+            },
+            {
+              "value": 7,
+              "label": "7"
+            },
+            {
+              "value": 10,
+              "label": "10"
+            },
+            {
+              "value": 15,
+              "label": "15"
+            },
+            {
+              "label": "100",
+              "value": 100
+            }
+          ]
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "7dab2754-ea15-471c-926f-3ac4e60d0daf",
+      "reference": 7,
+      "type": "pad",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Boost",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 104,
+            "onValue": 127,
+            "offValue": 0
+          },
+          "defaultValue": "off"
+        }
+      ],
+      "visible": true,
+      "mode": "momentary"
+    },
+    {
+      "id": "180950d0-c4a7-48c4-85ff-fa2e465b9c30",
+      "reference": 9,
+      "type": "pad",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Scale dice",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 105,
+            "onValue": 127,
+            "offValue": 0
+          },
+          "defaultValue": "off"
+        }
+      ],
+      "visible": true,
+      "mode": "momentary"
+    },
+    {
+      "id": "a85757aa-1144-4d6f-8337-c5b7969bc924",
+      "reference": 10,
+      "type": "label",
+      "name": "# of Notes",
+      "color": "ffffff",
+      "span": 1,
+      "vspan": 0
+    },
+    {
+      "id": "e75b0523-c799-4d13-aa92-2d9ef160b137",
+      "reference": 11,
+      "type": "label",
+      "name": "Life span",
+      "color": "ffffff",
+      "span": 1,
+      "vspan": 0
+    }
+  ],
+  "categories": [],
+  "layouts": [
+    {
+      "id": "mini-4x2",
+      "targetDevice": "mini",
+      "name": "Electra One Mini 4x2",
+      "slots": [
+        {
+          "id": 0,
+          "tile": {
+            "id": "54081839-d8a6-4f25-9cb3-9f852158909e",
+            "slotId": 0,
+            "type": "ref",
+            "tileId": "42efc273-8ac9-4487-9e65-b8de29754b8f"
+          }
+        },
+        {
+          "id": 4,
+          "tile": {
+            "id": "d674042b-0f09-47e0-a5ea-579aef8aba3d",
+            "slotId": 4,
+            "type": "ref",
+            "tileId": "726cf3b4-7ef7-4212-971d-18e42dc62a55"
+          }
+        },
+        {
+          "id": 5,
+          "tile": {
+            "id": "dfb53bf7-6d3b-42d1-b188-3affbe66e854",
+            "slotId": 5,
+            "type": "ref",
+            "tileId": "4de45f17-52da-4be9-a360-6adc9ac9c3a4"
+          }
+        },
+        {
+          "id": 7,
+          "tile": {
+            "id": "f0bb980d-94c9-4c2a-bef9-689b2037a3cd",
+            "slotId": 7,
+            "type": "ref",
+            "tileId": "7c3768da-b53b-4967-9703-af5e2545bb22"
+          }
+        },
+        {
+          "id": 12,
+          "tile": {
+            "id": "0b653d6b-a629-4aee-acfc-b93e7df9a94d",
+            "slotId": 12,
+            "type": "ref",
+            "tileId": "7af37b5c-e813-4da5-b552-b8c7a0829852"
+          }
+        },
+        {
+          "id": 15,
+          "tile": {
+            "id": "12428bcf-4f8b-4349-831e-bf5c98f85cab",
+            "slotId": 15,
+            "type": "ref",
+            "tileId": "5e0e5384-d1c5-48fa-b812-5f762d971567"
+          }
+        },
+        {
+          "id": 16,
+          "tile": {
+            "id": "b820573d-d70a-4b8f-adb7-89ebc04733f3",
+            "slotId": 16,
+            "type": "ref",
+            "tileId": "a85757aa-1144-4d6f-8337-c5b7969bc924"
+          }
+        },
+        {
+          "id": 17,
+          "tile": {
+            "id": "c17e5b64-ee62-4177-83c4-a019579cfb45",
+            "slotId": 17,
+            "type": "ref",
+            "tileId": "e75b0523-c799-4d13-aa92-2d9ef160b137"
+          }
+        },
+        {
+          "id": 20,
+          "tile": {
+            "id": "b61c324d-67b1-49c3-ab56-7a6692f9de52",
+            "slotId": 20,
+            "type": "ref",
+            "tileId": "27449a6a-dbf7-4751-bc13-95675b6303a9"
+          }
+        },
+        {
+          "id": 21,
+          "tile": {
+            "id": "3302a0d6-81a8-4f75-8424-0636593c08b0",
+            "slotId": 21,
+            "type": "ref",
+            "tileId": "25c4f71e-79ea-4462-9c0c-938907da9ade"
+          }
+        },
+        {
+          "id": 22,
+          "tile": {
+            "id": "ccec541a-d57c-4881-b095-0253e879b1bd",
+            "slotId": 22,
+            "type": "ref",
+            "tileId": "7dab2754-ea15-471c-926f-3ac4e60d0daf"
+          }
+        },
+        {
+          "id": 23,
+          "tile": {
+            "id": "871afb3f-0de3-4c42-a107-7845cc64baa2",
+            "slotId": 23,
+            "type": "ref",
+            "tileId": "180950d0-c4a7-48c4-85ff-fa2e465b9c30"
+          }
+        }
+      ],
+      "pages": {
+        "1": {
+          "id": "1",
+          "name": "Page 1",
+          "defaultControlSetId": 2
+        }
+      }
+    },
+    {
+      "id": "mk2-6x6",
+      "targetDevice": "mk2",
+      "name": "Electra One Mk2 6x6",
+      "slots": [
+        {
+          "id": 6,
+          "tile": {
+            "id": "4502b508-d6c5-4281-a8b1-d478bd2e0a27",
+            "slotId": 6,
+            "type": "ref",
+            "tileId": "27449a6a-dbf7-4751-bc13-95675b6303a9"
+          }
+        },
+        {
+          "id": 7,
+          "tile": {
+            "id": "bbb78c93-5107-4331-abea-8aefc0f1a671",
+            "slotId": 7,
+            "type": "ref",
+            "tileId": "726cf3b4-7ef7-4212-971d-18e42dc62a55"
+          }
+        },
+        {
+          "id": 8,
+          "tile": {
+            "id": "37db375f-724d-4f3d-a631-e70a81aedd10",
+            "slotId": 8,
+            "type": "ref",
+            "tileId": "7c3768da-b53b-4967-9703-af5e2545bb22"
+          }
+        },
+        {
+          "id": 9,
+          "tile": {
+            "id": "55edf20a-092c-4e3c-8d0c-c60f863185a4",
+            "slotId": 9,
+            "type": "ref",
+            "tileId": "7dab2754-ea15-471c-926f-3ac4e60d0daf"
+          }
+        },
+        {
+          "id": 10,
+          "tile": {
+            "id": "f55ddaa6-f30d-4bc3-b440-cb1667f1d668",
+            "slotId": 10,
+            "type": "ref",
+            "tileId": "4de45f17-52da-4be9-a360-6adc9ac9c3a4"
+          }
+        },
+        {
+          "id": 18,
+          "tile": {
+            "id": "34ea0bc0-1839-4adb-a852-493982925ef1",
+            "slotId": 18,
+            "type": "ref",
+            "tileId": "25c4f71e-79ea-4462-9c0c-938907da9ade"
+          }
+        },
+        {
+          "id": 19,
+          "tile": {
+            "id": "78ae0b89-376f-4117-89bb-b40d2f5ffffb",
+            "slotId": 19,
+            "type": "ref",
+            "tileId": "7af37b5c-e813-4da5-b552-b8c7a0829852"
+          }
+        },
+        {
+          "id": 20,
+          "tile": {
+            "id": "7b44993c-48d5-402f-919e-0960197df346",
+            "slotId": 20,
+            "type": "ref",
+            "tileId": "5e0e5384-d1c5-48fa-b812-5f762d971567"
+          }
+        },
+        {
+          "id": 21,
+          "tile": {
+            "id": "91c6eb50-4e8e-44ec-84da-7b462b92f5ae",
+            "slotId": 21,
+            "type": "ref",
+            "tileId": "180950d0-c4a7-48c4-85ff-fa2e465b9c30"
+          }
+        }
+      ],
+      "pages": {
+        "1": {
+          "id": "1",
+          "name": "Page 1"
+        }
+      }
+    }
+  ],
+  "firstPageId": 1,
+  "_cache_meta": {
+    "source": "electra-one-public",
+    "id": "eZBSxDFKpnULd4e0we97",
+    "revision": "33",
+    "name": "Loopop's Tombola",
+    "fetched_at": "2026-04-13"
+  }
+}

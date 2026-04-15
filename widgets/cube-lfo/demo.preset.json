@@ -1,0 +1,1571 @@
+{
+  "schemaVersion": 2,
+  "id": "OE5cAkqSG7tdrTa28nNs",
+  "name": "Cube LFO",
+  "description": "",
+  "lua": "-- Demo of graphics handled in the timer interrupt handler\n-- The Cube LFO generates a pseudo random series of CC messages\n-- according to reading of a projection of X, Y coordinates\n-- of one of the cube vertices.\n\n-- Preset compatibility check\nassert(\n    controller.isRequired(MODEL_MK2, \"3.6.0\"),\n    \"Version 3.6.0 or higher is required\"\n)\n\n-- Constants\n--\n\n-- Animation refresh rate\nlocal REFRESH_RATE = 20\n\n-- Cube Control dimmensions\nlocal CUBE_WIDTH = 650\nlocal CUBE_HEIGHT = 280\n\n-- Colors (RGB 565 for now)\nlocal COLOR_EDGE = 0xFFFF\nlocal COLOR_CENTRE_POINT = 0xAB40\nlocal COLOR_MEASURED_POINT = 0xFE47\n\n-- Edge Point to meassure\nlocal MEASSURED_EDGE_POINT = 1\n\n\n-- Global variables\n--\n\n-- Shortcut for graphics object\nlocal g = graphics\n\n-- Cube custom control\nlocal cubeControl = controls.get(1)\n\n-- Cube's projected drawing points\ncubeControl.projection = {}\n\n-- Cube vertices\ncubeControl.vertices = {\n    {-50, -50, -50}, {50, -50, -50}, {50, 50, -50}, {-50, 50, -50},\n    {-50, -50, 50}, {50, -50, 50}, {50, 50, 50}, {-50, 50, 50}\n}\n\n-- Cube edges\ncubeControl.edges = {\n    {1, 2}, {2, 3}, {3, 4}, {4, 1},\n    {5, 6}, {6, 7}, {7, 8}, {8, 5},\n    {1, 5}, {2, 6}, {3, 7}, {4, 8}\n}\n\n-- Cube rotation angles\ncubeControl.angleX = 0\ncubeControl.angleY = 0\n\n-- Angular speed steps\ncubeControl.stepX = 0\ncubeControl.stepY = 0\n\n-- Center of the Cube\ncubeControl.centrePoint = { x = 0, y = 0 }\n\n-- Apply rotation change\n--\nfunction cubeControl:update()\n    self.angleX = self.angleX + self.stepX\n    self.angleY = self.angleY + self.stepY\n\n    local projected = {}\n    for i, v in ipairs(self.vertices) do\n        local rotatedY = rotateY(v, self.angleX)\n        local rotatedX = rotateX(rotatedY, self.angleY)\n        projected[i] = project(rotatedX)\n    end\n\n    self.projection =  projected\nend\n\n-- Set dimensions of the cube\n--\nfunction cubeControl:setDimensions(width, height)\n    local bounds = self:getBounds()\n    bounds[WIDTH] = width\n    bounds[HEIGHT] = height\n    self:setBounds(bounds)\n    self.centrePoint.x = width // 2\n    self.centrePoint.y = height // 2\nend\n\n\n-- Map of UI controls with dynamic changes\n--\nlocal uiControls = {\n    cube = cubeControl,\n    outX = controls.get(12),\n    outY = controls.get(13),\n}\n\n-- Map of parameters used in the preset\n--\nlocal parameters = {\n    outX = { PT_CC7, 1 },\n    outY = { PT_CC7, 2 },\n}\n\n\n-- Initialize the preset\n--\nfunction preset.onLoad()\n    -- Resize the custom Cube Control\n    cubeControl:setDimensions(CUBE_WIDTH, CUBE_HEIGHT)\n\n    -- Register the paint callback\n    cubeControl:setPaintCallback(paintCubeControl)\n\n    -- Configure and enable the timer\n    timer.setPeriod(REFRESH_RATE)\n    timer.enable()\nend\n\n-- Handle Grid changes\n--\nfunction parameterMap.onChange(valueObjects, origin, midiValue)\n    -- Process user input\n    for _, valueObject in ipairs(valueObjects) do\n        local type, parameterNumber, midiValue = getTypeParameterAndValue(valueObject)\n\n        if type == PT_VIRTUAL then\n            if parameterNumber == 11 then \n                uiControls.cube.stepX = convertValue(midiValue)\n            elseif parameterNumber == 12 then \n                uiControls.cube.stepY = convertValue(midiValue)\n            end\n        end\n    end\nend\n\n-- Handle the timer callback\n--\nfunction timer.onTick()\n    cubeControl:update()\n    sendOutboundCcMessages(uiControls.cube)\n    cubeControl:repaint()\nend\n\n-- Paint Cube Control callback\n--\nfunction paintCubeControl(control)\n    -- Get the bounding box\n    local bounds = control:getBounds()\n\n    -- Clear the bounding box\n    g.setColor(0x0002)\n    g.fillRect(0, 0, bounds[WIDTH], bounds[HEIGHT])\n\n    -- Paint the Cube\n    paintCube(control)\nend\n\n-- Rotate a point around the Y axis\n--\nfunction rotateY(point, angle)\n    local cos = math.cos(angle)\n    local sin = math.sin(angle)\n    return {\n        point[1] * cos - point[3] * sin,\n        point[2],\n        point[1] * sin + point[3] * cos\n    }\nend\n\n-- Rotate a point around the X axis\n--\nfunction rotateX(point, angle)\n    local cos = math.cos(angle)\n    local sin = math.sin(angle)\n    return {\n        point[1],\n        point[2] * cos - point[3] * sin,\n        point[2] * sin + point[3] * cos\n    }\nend\n\n-- Project 3D points to 2D\n--\nfunction project(point)\n    local fov = 256\n    local viewer_distance = 200\n    return {\n        CUBE_WIDTH / 2 + (fov * point[1]) / (viewer_distance + point[3]),\n        CUBE_HEIGHT / 2 - (fov * point[2]) / (viewer_distance + point[3])\n    }\nend\n\n-- Paint the Cube 2D projection\n--\nfunction paintCube(cube)\n    -- Set color of Cube edges\n    g.setColor(COLOR_EDGE)\n\n    -- Draw all edges\n    for i, edge in ipairs(cube.edges) do\n        -- Calculate projected coordinates of given\n        -- edge endpoints\n        local p1X = math.floor(cube.projection[edge[1]][1])\n        local p1Y = math.floor(cube.projection[edge[1]][2])\n        local p2X = math.floor(cube.projection[edge[2]][1])\n        local p2Y = math.floor(cube.projection[edge[2]][2])\n\n        -- Connect he first edge point with the reference point\n        if i == MEASSURED_EDGE_POINT then\n            -- Draw the centre pojnt the the arm to\n            -- the meassured point\n            g.setColor(COLOR_CENTRE_POINT)\n            g.fillCircle(\n                cube.centrePoint.x,\n                cube.centrePoint.y, 5\n            )\n            g.drawLine(\n                cube.centrePoint.x,\n                cube.centrePoint.y,\n                p1X,\n                p1Y\n            )\n\n            -- Draw the meassured point\n            g.setColor(COLOR_MEASURED_POINT)\n            g.fillCircle(p1X, p1Y, 5)\n\n            -- Switch back to the edge color\n            g.setColor(COLOR_EDGE)\n        end\n\n        -- Draw the edge\n        g.drawLine(p1X, p1Y, p2X, p2Y)\n    end\nend\n\n-- Paint the Cube 2D projection\n--\nfunction sendOutboundCcMessages(cube)\n    local edge = cube.edges[MEASSURED_EDGE_POINT]\n    local p1 = cube.projection[edge[1]]\n    local p2 = cube.projection[edge[2]]\n\n    -- TODO: Get rid of the magic numbers\n    setParameter(\n        parameters.outX,\n        math.floor((p1[1] - (cube.centrePoint.x - 123)) * 0.52)\n    )\n    setParameter(\n        parameters.outY,\n        math.floor((p1[2] - (cube.centrePoint.y - 123)) * 0.52)\n    )\nend\n\n-- Convert a liner fader value to altered exponential\n-- value that suits angular speed adjustment\n--\nfunction convertValue(input)\n    -- Steepness of the slope\n    local k = 1\n\n    --  Maximum angular speed\n    local T = 0.2\n    \n    return T * (math.exp((input / 100) * k) - 1) / (math.exp(k) - 1)\nend\n\n-- Set a parameter value\n--\nfunction setParameter(parameter, value)\n    local type, parameterNumber = table.unpack(parameter)\n    parameterMap.set(1, type, parameterNumber, value)\nend\n\n-- Get a MIDI type, parameter, and value from the value object\n--\nfunction getTypeParameterAndValue(vo)\n    return vo:getMessage():getType(),\n        vo:getMessage():getParameterNumber(),\n        vo:getMessage():getValue()\nend\n\n-- Get MIDI value from the value object\n--\nfunction getMidiValue(vo)\n    return vo:getMessage():getValue()\nend\n\n-- Changes CC parameterNumber associated with given Control\n--\nfunction setControlCc(control, cc)\n    local message = control:getValue():getMessage()\n    message:setParameterNumber(cc)\nend\n\n\n-- Handle change of Outbound X CC\n--\nfunction xCcChanged(valueObject, value)\n    local newCc = getMidiValue(valueObject)\n    parameters.outX[2] = newCc\n    setControlCc(uiControls.outX, newCc)\nend\n\n-- Handle change of Outbound Y CC\n--\nfunction yCcChanged(valueObject, value)\n    local newCc = getMidiValue(valueObject)\n    parameters.outY[2] = newCc\n    setControlCc(uiControls.outY, newCc)\nend",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Generic MIDI",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "42efc273-8ac9-4487-9e65-b8de29754b8f",
+      "type": "label",
+      "name": "The cube",
+      "categoryId": "label",
+      "group": "labels",
+      "default": true,
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "parameterNumber": 2
+          }
+        }
+      ],
+      "deviceId": 1,
+      "color": "ffffff",
+      "slotId": 1,
+      "reference": 2,
+      "span": 4
+    },
+    {
+      "id": "4de45f17-52da-4be9-a360-6adc9ac9c3a4",
+      "reference": 1,
+      "slotId": 7,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Custom",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 100
+          }
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "8cbb3867-545d-4b75-8382-03319d3c74f0",
+      "type": "label",
+      "name": "Cube controls",
+      "categoryId": "label",
+      "group": "labels",
+      "default": true,
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "parameterNumber": 5
+          }
+        }
+      ],
+      "deviceId": 1,
+      "color": "ffffff",
+      "slotId": 48,
+      "reference": 5,
+      "span": 6
+    },
+    {
+      "id": "93734020-8d00-499a-815a-3a1e4bf3fb60",
+      "type": "label",
+      "name": "Angular speed",
+      "categoryId": "label",
+      "group": "labels",
+      "default": true,
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "parameterNumber": 6
+          }
+        }
+      ],
+      "deviceId": 1,
+      "color": "ffffff",
+      "slotId": 60,
+      "reference": 7,
+      "span": 2
+    },
+    {
+      "id": "bb6cd12f-8534-4e74-9963-2c4a7d7d3f66",
+      "type": "label",
+      "name": "Outbound CC#",
+      "categoryId": "label",
+      "group": "labels",
+      "default": true,
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "parameterNumber": 9
+          }
+        }
+      ],
+      "deviceId": 1,
+      "color": "ffffff",
+      "slotId": 62,
+      "reference": 10,
+      "span": 2
+    },
+    {
+      "id": "95e99e23-20dc-4e6e-a782-a00b6b9b1802",
+      "type": "label",
+      "name": "LFO Output",
+      "categoryId": "label",
+      "group": "labels",
+      "default": true,
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "parameterNumber": 10
+          }
+        }
+      ],
+      "deviceId": 1,
+      "color": "ffffff",
+      "slotId": 64,
+      "reference": 11,
+      "span": 2
+    },
+    {
+      "id": "8f8d395b-531e-41ac-9582-c18629448b60",
+      "reference": 4,
+      "slotId": 66,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "F49500",
+      "name": "X",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 11,
+            "min": 0,
+            "max": 100
+          },
+          "defaultValue": 0
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "ddce392f-88d4-4797-99dc-5a139cf80c02",
+      "reference": 6,
+      "slotId": 67,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "F49500",
+      "name": "Y",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 12,
+            "min": 0,
+            "max": 100
+          },
+          "defaultValue": 0
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "e6b28c41-d2fa-43f3-83f4-8b8adea48b72",
+      "reference": 8,
+      "slotId": 68,
+      "type": "list",
+      "deviceId": 1,
+      "color": "F45C51",
+      "name": "X",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 3
+          },
+          "textValues": [
+            {
+              "value": 1,
+              "label": "CC #1",
+              "index": 0
+            },
+            {
+              "value": 2,
+              "label": "CC #2",
+              "index": 1
+            },
+            {
+              "value": 3,
+              "label": "CC #3",
+              "index": 2
+            },
+            {
+              "value": 4,
+              "label": "CC #4",
+              "index": 3
+            },
+            {
+              "value": 5,
+              "label": "CC #5",
+              "index": 4
+            },
+            {
+              "value": 6,
+              "label": "CC #6",
+              "index": 5
+            },
+            {
+              "value": 7,
+              "label": "CC #7",
+              "index": 6
+            },
+            {
+              "value": 8,
+              "label": "CC #8",
+              "index": 7
+            },
+            {
+              "value": 9,
+              "label": "CC #9",
+              "index": 8
+            },
+            {
+              "value": 10,
+              "label": "CC #10",
+              "index": 9
+            },
+            {
+              "value": 11,
+              "label": "CC #11",
+              "index": 10
+            },
+            {
+              "value": 12,
+              "label": "CC #12",
+              "index": 11
+            },
+            {
+              "value": 13,
+              "label": "CC #13",
+              "index": 12
+            },
+            {
+              "value": 14,
+              "label": "CC #14",
+              "index": 13
+            },
+            {
+              "value": 15,
+              "label": "CC #15",
+              "index": 14
+            },
+            {
+              "value": 16,
+              "label": "CC #16",
+              "index": 15
+            },
+            {
+              "value": 17,
+              "label": "CC #17",
+              "index": 16
+            },
+            {
+              "value": 18,
+              "label": "CC #18",
+              "index": 17
+            },
+            {
+              "value": 19,
+              "label": "CC #19",
+              "index": 18
+            },
+            {
+              "value": 20,
+              "label": "CC #20",
+              "index": 19
+            },
+            {
+              "value": 21,
+              "label": "CC #21",
+              "index": 20
+            },
+            {
+              "value": 22,
+              "label": "CC #22",
+              "index": 21
+            },
+            {
+              "value": 23,
+              "label": "CC #23",
+              "index": 22
+            },
+            {
+              "value": 24,
+              "label": "CC #24",
+              "index": 23
+            },
+            {
+              "value": 25,
+              "label": "CC #25",
+              "index": 24
+            },
+            {
+              "value": 26,
+              "label": "CC #26",
+              "index": 25
+            },
+            {
+              "value": 27,
+              "label": "CC #27",
+              "index": 26
+            },
+            {
+              "value": 28,
+              "label": "CC #28",
+              "index": 27
+            },
+            {
+              "value": 29,
+              "label": "CC #29",
+              "index": 28
+            },
+            {
+              "value": 30,
+              "label": "CC #30",
+              "index": 29
+            },
+            {
+              "value": 31,
+              "label": "CC #31",
+              "index": 30
+            },
+            {
+              "value": 32,
+              "label": "CC #32",
+              "index": 31
+            },
+            {
+              "value": 33,
+              "label": "CC #33",
+              "index": 32
+            },
+            {
+              "value": 34,
+              "label": "CC #34",
+              "index": 33
+            },
+            {
+              "value": 35,
+              "label": "CC #35",
+              "index": 34
+            },
+            {
+              "value": 36,
+              "label": "CC #36",
+              "index": 35
+            },
+            {
+              "value": 37,
+              "label": "CC #37",
+              "index": 36
+            },
+            {
+              "value": 38,
+              "label": "CC #38",
+              "index": 37
+            },
+            {
+              "value": 39,
+              "label": "CC #39",
+              "index": 38
+            },
+            {
+              "value": 40,
+              "label": "CC #40",
+              "index": 39
+            },
+            {
+              "value": 41,
+              "label": "CC #41",
+              "index": 40
+            },
+            {
+              "value": 42,
+              "label": "CC #42",
+              "index": 41
+            },
+            {
+              "value": 43,
+              "label": "CC #43",
+              "index": 42
+            },
+            {
+              "value": 44,
+              "label": "CC #44",
+              "index": 43
+            },
+            {
+              "value": 45,
+              "label": "CC #45",
+              "index": 44
+            },
+            {
+              "value": 46,
+              "label": "CC #46",
+              "index": 45
+            },
+            {
+              "value": 47,
+              "label": "CC #47",
+              "index": 46
+            },
+            {
+              "value": 48,
+              "label": "CC #48",
+              "index": 47
+            },
+            {
+              "value": 49,
+              "label": "CC #49",
+              "index": 48
+            },
+            {
+              "value": 50,
+              "label": "CC #50",
+              "index": 49
+            },
+            {
+              "value": 51,
+              "label": "CC #51",
+              "index": 50
+            },
+            {
+              "value": 52,
+              "label": "CC #52",
+              "index": 51
+            },
+            {
+              "value": 53,
+              "label": "CC #53",
+              "index": 52
+            },
+            {
+              "value": 54,
+              "label": "CC #54",
+              "index": 53
+            },
+            {
+              "value": 55,
+              "label": "CC #55",
+              "index": 54
+            },
+            {
+              "value": 56,
+              "label": "CC #56",
+              "index": 55
+            },
+            {
+              "value": 57,
+              "label": "CC #57",
+              "index": 56
+            },
+            {
+              "value": 58,
+              "label": "CC #58",
+              "index": 57
+            },
+            {
+              "value": 59,
+              "label": "CC #59",
+              "index": 58
+            },
+            {
+              "value": 60,
+              "label": "CC #60",
+              "index": 59
+            },
+            {
+              "value": 61,
+              "label": "CC #61",
+              "index": 60
+            },
+            {
+              "value": 62,
+              "label": "CC #62",
+              "index": 61
+            },
+            {
+              "value": 63,
+              "label": "CC #63",
+              "index": 62
+            },
+            {
+              "value": 64,
+              "label": "CC #64",
+              "index": 63
+            },
+            {
+              "value": 65,
+              "label": "CC #65",
+              "index": 64
+            },
+            {
+              "value": 66,
+              "label": "CC #66",
+              "index": 65
+            },
+            {
+              "value": 67,
+              "label": "CC #67",
+              "index": 66
+            },
+            {
+              "value": 68,
+              "label": "CC #68",
+              "index": 67
+            },
+            {
+              "value": 69,
+              "label": "CC #69",
+              "index": 68
+            },
+            {
+              "value": 70,
+              "label": "CC #70",
+              "index": 69
+            },
+            {
+              "value": 71,
+              "label": "CC #71",
+              "index": 70
+            },
+            {
+              "value": 72,
+              "label": "CC #72",
+              "index": 71
+            },
+            {
+              "value": 73,
+              "label": "CC #73",
+              "index": 72
+            },
+            {
+              "value": 74,
+              "label": "CC #74",
+              "index": 73
+            },
+            {
+              "value": 75,
+              "label": "CC #75",
+              "index": 74
+            },
+            {
+              "value": 76,
+              "label": "CC #76",
+              "index": 75
+            },
+            {
+              "value": 77,
+              "label": "CC #77",
+              "index": 76
+            },
+            {
+              "value": 78,
+              "label": "CC #78",
+              "index": 77
+            },
+            {
+              "value": 79,
+              "label": "CC #79",
+              "index": 78
+            },
+            {
+              "value": 80,
+              "label": "CC #80",
+              "index": 79
+            },
+            {
+              "value": 81,
+              "label": "CC #81",
+              "index": 80
+            },
+            {
+              "value": 82,
+              "label": "CC #82",
+              "index": 81
+            },
+            {
+              "value": 83,
+              "label": "CC #83",
+              "index": 82
+            },
+            {
+              "value": 84,
+              "label": "CC #84",
+              "index": 83
+            },
+            {
+              "value": 85,
+              "label": "CC #85",
+              "index": 84
+            },
+            {
+              "value": 86,
+              "label": "CC #86",
+              "index": 85
+            },
+            {
+              "value": 87,
+              "label": "CC #87",
+              "index": 86
+            },
+            {
+              "value": 88,
+              "label": "CC #88",
+              "index": 87
+            },
+            {
+              "value": 89,
+              "label": "CC #89",
+              "index": 88
+            },
+            {
+              "value": 90,
+              "label": "CC #90",
+              "index": 89
+            },
+            {
+              "value": 91,
+              "label": "CC #91",
+              "index": 90
+            },
+            {
+              "value": 92,
+              "label": "CC #92",
+              "index": 91
+            },
+            {
+              "value": 93,
+              "label": "CC #93",
+              "index": 92
+            },
+            {
+              "value": 94,
+              "label": "CC #94",
+              "index": 93
+            },
+            {
+              "value": 95,
+              "label": "CC #95",
+              "index": 94
+            },
+            {
+              "value": 96,
+              "label": "CC #96",
+              "index": 95
+            },
+            {
+              "value": 97,
+              "label": "CC #97",
+              "index": 96
+            },
+            {
+              "value": 98,
+              "label": "CC #98",
+              "index": 97
+            },
+            {
+              "value": 99,
+              "label": "CC #99",
+              "index": 98
+            },
+            {
+              "value": 100,
+              "label": "CC #100",
+              "index": 99
+            },
+            {
+              "value": 101,
+              "label": "CC #101",
+              "index": 100
+            },
+            {
+              "value": 102,
+              "label": "CC #102",
+              "index": 101
+            },
+            {
+              "value": 103,
+              "label": "CC #103",
+              "index": 102
+            },
+            {
+              "value": 104,
+              "label": "CC #104",
+              "index": 103
+            },
+            {
+              "value": 105,
+              "label": "CC #105",
+              "index": 104
+            },
+            {
+              "value": 106,
+              "label": "CC #106",
+              "index": 105
+            },
+            {
+              "value": 107,
+              "label": "CC #107",
+              "index": 106
+            },
+            {
+              "value": 108,
+              "label": "CC #108",
+              "index": 107
+            },
+            {
+              "value": 109,
+              "label": "CC #109",
+              "index": 108
+            },
+            {
+              "value": 110,
+              "label": "CC #110",
+              "index": 109
+            },
+            {
+              "value": 111,
+              "label": "CC #111",
+              "index": 110
+            },
+            {
+              "value": 112,
+              "label": "CC #112",
+              "index": 111
+            },
+            {
+              "value": 113,
+              "label": "CC #113",
+              "index": 112
+            },
+            {
+              "value": 114,
+              "label": "CC #114",
+              "index": 113
+            },
+            {
+              "value": 115,
+              "label": "CC #115",
+              "index": 114
+            },
+            {
+              "value": 116,
+              "label": "CC #116",
+              "index": 115
+            },
+            {
+              "value": 117,
+              "label": "CC #117",
+              "index": 116
+            },
+            {
+              "value": 118,
+              "label": "CC #118",
+              "index": 117
+            },
+            {
+              "value": 119,
+              "label": "CC #119",
+              "index": 118
+            },
+            {
+              "value": 120,
+              "label": "CC #120",
+              "index": 119
+            },
+            {
+              "value": 121,
+              "label": "CC #121",
+              "index": 120
+            },
+            {
+              "value": 122,
+              "label": "CC #122",
+              "index": 121
+            },
+            {
+              "value": 123,
+              "label": "CC #123",
+              "index": 122
+            },
+            {
+              "value": 124,
+              "label": "CC #124",
+              "index": 123
+            },
+            {
+              "value": 125,
+              "label": "CC #125",
+              "index": 124
+            },
+            {
+              "value": 126,
+              "label": "CC #126",
+              "index": 125
+            },
+            {
+              "value": 127,
+              "label": "CC #127",
+              "index": 126
+            }
+          ],
+          "defaultValue": 1,
+          "function": "xCcChanged"
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "cf39c229-09d7-4fb8-b888-8d2bf9edf239",
+      "reference": 9,
+      "slotId": 69,
+      "type": "list",
+      "deviceId": 1,
+      "color": "F45C51",
+      "name": "Y",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 4
+          },
+          "textValues": [
+            {
+              "value": 1,
+              "label": "CC #1",
+              "index": 0
+            },
+            {
+              "value": 2,
+              "label": "CC #2",
+              "index": 1
+            },
+            {
+              "value": 3,
+              "label": "CC #3",
+              "index": 2
+            },
+            {
+              "value": 4,
+              "label": "CC #4",
+              "index": 3
+            },
+            {
+              "value": 5,
+              "label": "CC #5",
+              "index": 4
+            },
+            {
+              "value": 6,
+              "label": "CC #6",
+              "index": 5
+            },
+            {
+              "value": 7,
+              "label": "CC #7",
+              "index": 6
+            },
+            {
+              "value": 8,
+              "label": "CC #8",
+              "index": 7
+            },
+            {
+              "value": 9,
+              "label": "CC #9",
+              "index": 8
+            },
+            {
+              "value": 10,
+              "label": "CC #10",
+              "index": 9
+            },
+            {
+              "value": 11,
+              "label": "CC #11",
+              "index": 10
+            },
+            {
+              "value": 12,
+              "label": "CC #12",
+              "index": 11
+            },
+            {
+              "value": 13,
+              "label": "CC #13",
+              "index": 12
+            },
+            {
+              "value": 14,
+              "label": "CC #14",
+              "index": 13
+            },
+            {
+              "value": 15,
+              "label": "CC #15",
+              "index": 14
+            },
+            {
+              "value": 16,
+              "label": "CC #16",
+              "index": 15
+            },
+            {
+              "value": 17,
+              "label": "CC #17",
+              "index": 16
+            },
+            {
+              "value": 18,
+              "label": "CC #18",
+              "index": 17
+            },
+            {
+              "value": 19,
+              "label": "CC #19",
+              "index": 18
+            },
+            {
+              "value": 20,
+              "label": "CC #20",
+              "index": 19
+            },
+            {
+              "value": 21,
+              "label": "CC #21",
+              "index": 20
+            },
+            {
+              "value": 22,
+              "label": "CC #22",
+              "index": 21
+            },
+            {
+              "value": 23,
+              "label": "CC #23",
+              "index": 22
+            },
+            {
+              "value": 24,
+              "label": "CC #24",
+              "index": 23
+            },
+            {
+              "value": 25,
+              "label": "CC #25",
+              "index": 24
+            },
+            {
+              "value": 26,
+              "label": "CC #26",
+              "index": 25
+            },
+            {
+              "value": 27,
+              "label": "CC #27",
+              "index": 26
+            },
+            {
+              "value": 28,
+              "label": "CC #28",
+              "index": 27
+            },
+            {
+              "value": 29,
+              "label": "CC #29",
+              "index": 28
+            },
+            {
+              "value": 30,
+              "label": "CC #30",
+              "index": 29
+            },
+            {
+              "value": 31,
+              "label": "CC #31",
+              "index": 30
+            },
+            {
+              "value": 32,
+              "label": "CC #32",
+              "index": 31
+            },
+            {
+              "value": 33,
+              "label": "CC #33",
+              "index": 32
+            },
+            {
+              "value": 34,
+              "label": "CC #34",
+              "index": 33
+            },
+            {
+              "value": 35,
+              "label": "CC #35",
+              "index": 34
+            },
+            {
+              "value": 36,
+              "label": "CC #36",
+              "index": 35
+            },
+            {
+              "value": 37,
+              "label": "CC #37",
+              "index": 36
+            },
+            {
+              "value": 38,
+              "label": "CC #38",
+              "index": 37
+            },
+            {
+              "value": 39,
+              "label": "CC #39",
+              "index": 38
+            },
+            {
+              "value": 40,
+              "label": "CC #40",
+              "index": 39
+            },
+            {
+              "value": 41,
+              "label": "CC #41",
+              "index": 40
+            },
+            {
+              "value": 42,
+              "label": "CC #42",
+              "index": 41
+            },
+            {
+              "value": 43,
+              "label": "CC #43",
+              "index": 42
+            },
+            {
+              "value": 44,
+              "label": "CC #44",
+              "index": 43
+            },
+            {
+              "value": 45,
+              "label": "CC #45",
+              "index": 44
+            },
+            {
+              "value": 46,
+              "label": "CC #46",
+              "index": 45
+            },
+            {
+              "value": 47,
+              "label": "CC #47",
+              "index": 46
+            },
+            {
+              "value": 48,
+              "label": "CC #48",
+              "index": 47
+            },
+            {
+              "value": 49,
+              "label": "CC #49",
+              "index": 48
+            },
+            {
+              "value": 50,
+              "label": "CC #50",
+              "index": 49
+            },
+            {
+              "value": 51,
+              "label": "CC #51",
+              "index": 50
+            },
+            {
+              "value": 52,
+              "label": "CC #52",
+              "index": 51
+            },
+            {
+              "value": 53,
+              "label": "CC #53",
+              "index": 52
+            },
+            {
+              "value": 54,
+              "label": "CC #54",
+              "index": 53
+            },
+            {
+              "value": 55,
+              "label": "CC #55",
+              "index": 54
+            },
+            {
+              "value": 56,
+              "label": "CC #56",
+              "index": 55
+            },
+            {
+              "value": 57,
+              "label": "CC #57",
+              "index": 56
+            },
+            {
+              "value": 58,
+              "label": "CC #58",
+              "index": 57
+            },
+            {
+              "value": 59,
+              "label": "CC #59",
+              "index": 58
+            },
+            {
+              "value": 60,
+              "label": "CC #60",
+              "index": 59
+            },
+            {
+              "value": 61,
+              "label": "CC #61",
+              "index": 60
+            },
+            {
+              "value": 62,
+              "label": "CC #62",
+              "index": 61
+            },
+            {
+              "value": 63,
+              "label": "CC #63",
+              "index": 62
+            },
+            {
+              "value": 64,
+              "label": "CC #64",
+              "index": 63
+            },
+            {
+              "value": 65,
+              "label": "CC #65",
+              "index": 64
+            },
+            {
+              "value": 66,
+              "label": "CC #66",
+              "index": 65
+            },
+            {
+              "value": 67,
+              "label": "CC #67",
+              "index": 66
+            },
+            {
+              "value": 68,
+              "label": "CC #68",
+              "index": 67
+            },
+            {
+              "value": 69,
+              "label": "CC #69",
+              "index": 68
+            },
+            {
+              "value": 70,
+              "label": "CC #70",
+              "index": 69
+            },
+            {
+              "value": 71,
+              "label": "CC #71",
+              "index": 70
+            },
+            {
+              "value": 72,
+              "label": "CC #72",
+              "index": 71
+            },
+            {
+              "value": 73,
+              "label": "CC #73",
+              "index": 72
+            },
+            {
+              "value": 74,
+              "label": "CC #74",
+              "index": 73
+            },
+            {
+              "value": 75,
+              "label": "CC #75",
+              "index": 74
+            },
+            {
+              "value": 76,
+              "label": "CC #76",
+              "index": 75
+            },
+            {
+              "value": 77,
+              "label": "CC #77",
+              "index": 76
+            },
+            {
+              "value": 78,
+              "label": "CC #78",
+              "index": 77
+            },
+            {
+              "value": 79,
+              "label": "CC #79",
+              "index": 78
+            },
+            {
+              "value": 80,
+              "label": "CC #80",
+              "index": 79
+            },
+            {
+              "value": 81,
+              "label": "CC #81",
+              "index": 80
+            },
+            {
+              "value": 82,
+              "label": "CC #82",
+              "index": 81
+            },
+            {
+              "value": 83,
+              "label": "CC #83",
+              "index": 82
+            },
+            {
+              "value": 84,
+              "label": "CC #84",
+              "index": 83
+            },
+            {
+              "value": 85,
+              "label": "CC #85",
+              "index": 84
+            },
+            {
+              "value": 86,
+              "label": "CC #86",
+              "index": 85
+            },
+            {
+              "value": 87,
+              "label": "CC #87",
+              "index": 86
+            },
+            {
+              "value": 88,
+              "label": "CC #88",
+              "index": 87
+            },
+            {
+              "value": 89,
+              "label": "CC #89",
+              "index": 88
+            },
+            {
+              "value": 90,
+              "label": "CC #90",
+              "index": 89
+            },
+            {
+              "value": 91,
+              "label": "CC #91",
+              "index": 90
+            },
+            {
+              "value": 92,
+              "label": "CC #92",
+              "index": 91
+            },
+            {
+              "value": 93,
+              "label": "CC #93",
+              "index": 92
+            },
+            {
+              "value": 94,
+              "label": "CC #94",
+              "index": 93
+            },
+            {
+              "value": 95,
+              "label": "CC #95",
+              "index": 94
+            },
+            {
+              "value": 96,
+              "label": "CC #96",
+              "index": 95
+            },
+            {
+              "value": 97,
+              "label": "CC #97",
+              "index": 96
+            },
+            {
+              "value": 98,
+              "label": "CC #98",
+              "index": 97
+            },
+            {
+              "value": 99,
+              "label": "CC #99",
+              "index": 98
+            },
+            {
+              "value": 100,
+              "label": "CC #100",
+              "index": 99
+            },
+            {
+              "value": 101,
+              "label": "CC #101",
+              "index": 100
+            },
+            {
+              "value": 102,
+              "label": "CC #102",
+              "index": 101
+            },
+            {
+              "value": 103,
+              "label": "CC #103",
+              "index": 102
+            },
+            {
+              "value": 104,
+              "label": "CC #104",
+              "index": 103
+            },
+            {
+              "value": 105,
+              "label": "CC #105",
+              "index": 104
+            },
+            {
+              "value": 106,
+              "label": "CC #106",
+              "index": 105
+            },
+            {
+              "value": 107,
+              "label": "CC #107",
+              "index": 106
+            },
+            {
+              "value": 108,
+              "label": "CC #108",
+              "index": 107
+            },
+            {
+              "value": 109,
+              "label": "CC #109",
+              "index": 108
+            },
+            {
+              "value": 110,
+              "label": "CC #110",
+              "index": 109
+            },
+            {
+              "value": 111,
+              "label": "CC #111",
+              "index": 110
+            },
+            {
+              "value": 112,
+              "label": "CC #112",
+              "index": 111
+            },
+            {
+              "value": 113,
+              "label": "CC #113",
+              "index": 112
+            },
+            {
+              "value": 114,
+              "label": "CC #114",
+              "index": 113
+            },
+            {
+              "value": 115,
+              "label": "CC #115",
+              "index": 114
+            },
+            {
+              "value": 116,
+              "label": "CC #116",
+              "index": 115
+            },
+            {
+              "value": 117,
+              "label": "CC #117",
+              "index": 116
+            },
+            {
+              "value": 118,
+              "label": "CC #118",
+              "index": 117
+            },
+            {
+              "value": 119,
+              "label": "CC #119",
+              "index": 118
+            },
+            {
+              "value": 120,
+              "label": "CC #120",
+              "index": 119
+            },
+            {
+              "value": 121,
+              "label": "CC #121",
+              "index": 120
+            },
+            {
+              "value": 122,
+              "label": "CC #122",
+              "index": 121
+            },
+            {
+              "value": 123,
+              "label": "CC #123",
+              "index": 122
+            },
+            {
+              "value": 124,
+              "label": "CC #124",
+              "index": 123
+            },
+            {
+              "value": 125,
+              "label": "CC #125",
+              "index": 124
+            },
+            {
+              "value": 126,
+              "label": "CC #126",
+              "index": 125
+            },
+            {
+              "value": 127,
+              "label": "CC #127",
+              "index": 126
+            }
+          ],
+          "defaultValue": 2,
+          "function": "yCcChanged"
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "aee1311a-ac82-4445-bd3a-b5de840e0622",
+      "reference": 12,
+      "slotId": 70,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "529DEC",
+      "name": "X",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 5,
+            "min": 0,
+            "max": 127
+          }
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "665d3ed0-09a0-4e21-93e9-2653131fd53e",
+      "reference": 13,
+      "slotId": 71,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "529DEC",
+      "name": "Y",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 6,
+            "min": 0,
+            "max": 127
+          }
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    }
+  ],
+  "pages": [
+    {
+      "id": 1,
+      "name": "Page 1",
+      "defaultControlSetId": 2
+    }
+  ],
+  "categories": [],
+  "firstPageId": 1,
+  "_cache_meta": {
+    "source": "electra-one-public",
+    "id": "OE5cAkqSG7tdrTa28nNs",
+    "revision": "165",
+    "name": "Cube LFO",
+    "fetched_at": "2026-04-13"
+  }
+}

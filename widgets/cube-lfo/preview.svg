@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" data-v-1a61d7ae="" viewBox="0 0 996 560" width="1024" height="600" class="display preview-image">
+    <style>
+        .name {
+    font-family: 'Open Sans';
+    font-size: 16px;
+    }
+    .name-small {
+    font-family: 'Open Sans';
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+    }
+    .slot-id-small {
+    font-family: 'Open Sans';
+    font-size: 10px;
+    text-transform: uppercase;
+    }
+    .value {
+    font-family: 'Open Sans';
+    font-size: 16px;
+    font-weight: bold;
+    }
+    </style>
+    <defs>
+        <style type="text/css">
+            @import url('https://fonts.googleapis.com/css?family=Open+Sans:400,700&amp;display=swap');
+
+      body {
+      margin: 0;
+      padding: 0;
+      }
+
+      text {
+      font-family: 'Avenir', Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      color: #2c3e50;
+      }
+
+      .display {
+      background-color: black;
+      }
+        </style>
+    </defs>
+    <g id="2" pageId="1" bounds="181,6,659,16">
+        <line x1="189" x2="479" y1="21" y2="21" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="554" x2="844" y1="21" y2="21" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="189" x2="189" y1="21" y2="29" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="844" x2="844" y1="21" y2="29" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <!---->
+        <!---->
+        <text x="517" y="22" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            THE CUBE
+        </text>
+    </g>
+    <g id="5" pageId="1" bounds="14,366,993,16">
+        <line x1="22" x2="458" y1="381" y2="381" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="575" x2="1011" y1="381" y2="381" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="22" x2="22" y1="381" y2="389" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="1011" x2="1011" y1="381" y2="389" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <!---->
+        <!---->
+        <text x="517" y="382" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            CUBE CONTROLS
+        </text>
+    </g>
+    <g id="7" pageId="1" bounds="14,456,325,16">
+        <line x1="22" x2="125" y1="471" y2="471" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="241" x2="343" y1="471" y2="471" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="22" x2="22" y1="471" y2="479" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="343" x2="343" y1="471" y2="479" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <!---->
+        <!---->
+        <text x="183" y="472" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            ANGULAR SPEED
+        </text>
+    </g>
+    <g id="10" pageId="1" bounds="348,456,325,16">
+        <line x1="356" x2="460" y1="471" y2="471" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="574" x2="677" y1="471" y2="471" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="356" x2="356" y1="471" y2="479" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="677" x2="677" y1="471" y2="479" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <!---->
+        <!---->
+        <text x="517" y="472" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            OUTBOUND CC#
+        </text>
+    </g>
+    <g id="11" pageId="1" bounds="682,456,325,16">
+        <line x1="690" x2="804" y1="471" y2="471" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="897" x2="1011" y1="471" y2="471" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="690" x2="690" y1="471" y2="479" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <line x1="1011" x2="1011" y1="471" y2="479" stroke="#ffffff" stroke-dasharray="1, 1"/>
+        <!---->
+        <!---->
+        <text x="851" y="472" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            LFO OUTPUT
+        </text>
+    </g>
+    <g type="fader" visible="visible" bounds="20,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-13007">
+                <rect x="22" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13007&quot;);">
+            <rect x="36" y="490" width="126" fill="#F49500" rx="4" ry="4" height="24" fill-opacity="0.2"/>
+            <rect x="36" y="490" width="94" fill="#F49500" rx="4" ry="4" height="24"/>
+            <text x="99" y="507" text-anchor="middle" fill="#000" class="value">
+                0 - 100
+            </text>
+            <text x="99" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                X
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="187,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-13008">
+                <rect x="189" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13008&quot;);">
+            <rect x="203" y="490" width="126" fill="#F49500" rx="4" ry="4" height="24" fill-opacity="0.2"/>
+            <rect x="203" y="490" width="94" fill="#F49500" rx="4" ry="4" height="24"/>
+            <text x="266" y="507" text-anchor="middle" fill="#000" class="value">
+                0 - 100
+            </text>
+            <text x="266" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                Y
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="688,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-13009">
+                <rect x="690" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13009&quot;);">
+            <rect x="704" y="490" width="126" fill="#529DEC" rx="4" ry="4" height="24" fill-opacity="0.2"/>
+            <rect x="704" y="490" width="94" fill="#529DEC" rx="4" ry="4" height="24"/>
+            <text x="767" y="507" text-anchor="middle" fill="#000" class="value">
+                0 - 127
+            </text>
+            <text x="767" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                X
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="855,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-13010">
+                <rect x="857" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13010&quot;);">
+            <rect x="871" y="490" width="126" fill="#529DEC" rx="4" ry="4" height="24" fill-opacity="0.2"/>
+            <rect x="871" y="490" width="94" fill="#529DEC" rx="4" ry="4" height="24"/>
+            <text x="934" y="507" text-anchor="middle" fill="#000" class="value">
+                0 - 127
+            </text>
+            <text x="934" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                Y
+            </text>
+        </g>
+    </g>
+    <g type="list" visible="visible" bounds="354,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-13011">
+                <rect x="356" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13011&quot;);">
+            <rect x="370" y="510" width="126" fill="#F45C51" rx="2" ry="2" height="4" fill-opacity="0.2"/>
+            <rect x="370" y="510" width="0.9921259842519685" fill="#F45C51" rx="2" ry="2" height="4"/>
+            <text x="433" y="501" fill="#F45C51" text-anchor="middle" class="value">
+                CC #1
+            </text>
+            <text x="433" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                X
+            </text>
+            <!---->
+        </g>
+    </g>
+    <g type="list" visible="visible" bounds="521,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-13012">
+                <rect x="523" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13012&quot;);">
+            <rect x="537" y="510" width="126" fill="#F45C51" rx="2" ry="2" height="4" fill-opacity="0.2"/>
+            <rect x="537" y="510" width="0.9921259842519685" fill="#F45C51" rx="2" ry="2" height="4"/>
+            <text x="600" y="501" fill="#F45C51" text-anchor="middle" class="value">
+                CC #1
+            </text>
+            <text x="600" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                Y
+            </text>
+            <!---->
+        </g>
+    </g>
+    <g type="custom" visible="visible" bounds="187,28,146,56" pageId="1">
+        <rect x="203" y="33" width="126" height="45" stroke="#ffffff" rx="4" ry="4" stroke-dasharray="2" fill-opacity="0.2" style="z-index: 1;"/>
+        <text x="266" y="58" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            CUSTOM
+        </text>
+    </g>
+</svg>

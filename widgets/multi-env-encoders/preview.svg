@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" data-v-1a61d7ae="" viewBox="0 0 996 560" width="1024" height="600" class="display preview-image">
+    <style>
+        .name {
+    font-family: 'Open Sans';
+    font-size: 16px;
+    }
+    .name-small {
+    font-family: 'Open Sans';
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+    }
+    .slot-id-small {
+    font-family: 'Open Sans';
+    font-size: 10px;
+    text-transform: uppercase;
+    }
+    .value {
+    font-family: 'Open Sans';
+    font-size: 16px;
+    font-weight: bold;
+    }
+    </style>
+    <defs>
+        <style type="text/css">
+            @import url('https://fonts.googleapis.com/css?family=Open+Sans:400,700&amp;display=swap');
+
+      body {
+      margin: 0;
+      padding: 0;
+      }
+
+      text {
+      font-family: 'Avenir', Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      color: #2c3e50;
+      }
+
+      .display {
+      background-color: black;
+      }
+        </style>
+    </defs>
+    <g type="fader" visible="visible" bounds="20,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-2758">
+                <rect x="22" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-2758&quot;);">
+            <rect x="36" y="506" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="36" y="506" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="99" y="498" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="99" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                ENV STAGE
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="688,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-2759">
+                <rect x="690" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-2759&quot;);">
+            <rect x="704" y="506" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="704" y="506" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="767" y="498" text-anchor="middle" fill="#ffffff" class="value">
+                10 - 758
+            </text>
+            <text x="767" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                X POS
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="855,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-2760">
+                <rect x="857" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-2760&quot;);">
+            <rect x="871" y="506" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="871" y="506" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="934" y="498" text-anchor="middle" fill="#ffffff" class="value">
+                10 - 256
+            </text>
+            <text x="934" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                Y POS
+            </text>
+        </g>
+    </g>
+    <g type="custom" visible="visible" bounds="20,28,146,56" pageId="1">
+        <rect x="36" y="33" width="126" height="45" stroke="#F45C51" rx="4" ry="4" stroke-dasharray="2" fill-opacity="0.2" style="z-index: 1;"/>
+        <text x="99" y="58" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            CUSTOM X
+        </text>
+    </g>
+</svg>

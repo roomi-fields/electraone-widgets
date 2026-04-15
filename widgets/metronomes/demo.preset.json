@@ -1,0 +1,1228 @@
+{
+  "schemaVersion": 3,
+  "targetDevice": "mk2",
+  "id": "CBRYC9JppeZUzOqgCvBT",
+  "name": "metronomes",
+  "description": "",
+  "lua": "------------------------------------------------------------------\r\n--  Electra-One Mk-2 \u00b7 SIX Bouncing Balls \u00b7 v12.0\r\n--  \u2022 master RUN  (bRun)\r\n--  \u2022 RESET button (bReset) parks all balls at the left wall\r\n--  \u2022 NEW: global speed-multiplier slider  (gSpeed)\r\n--      \u2013 S-ID  gSpeed   range 1\u2026100   default 50\r\n--      \u2013 value 1   \u2192 \u00d70.1   (10\u00d7 slower)\r\n--        value 50  \u2192 \u00d71     (exact pot settings)\r\n--        value 100 \u2192 \u00d710    (10\u00d7 faster)\r\n--  \u2022 per-ball  Chan \u00b7 Note \u00b7 Speed \u00b7 Vel-L \u00b7 Vel-R\r\n--  \u2022 6 lanes, canvas ID 1 (\u201cbGfx\u201d) 480\u00d7480\r\n------------------------------------------------------------------\r\n\r\n---------------- constants ---------------------------------------\r\nlocal CANVAS_ID = 1\r\nlocal W,H       = 640, 480\r\nlocal ROWS      = 6\r\nlocal TICK_MS   = 20\r\nlocal MIDI_PORT = 1\r\n------------------------------------------------------------------\r\n-- helpers\r\n------------------------------------------------------------------\r\nlocal function clamp(v,a,b)  return (v<a) and a or (v>b) and b or v end\r\nlocal function knobToMs(k)   return 50 + (k/127)*(5000-50) end\r\n-- gSpeed 1\u2026100  \u2192 multiplier 0.1\u202610   (log10 curve, symmetrical)\r\nlocal function gKnobToMul(k) return 10 ^ ((k-50)/50) end\r\n\r\n------------------------------------------------------------------\r\n-- ball data  (rows & colours)\r\n------------------------------------------------------------------\r\nlocal balls = {\r\n  {col=0xFFFF,row=1,pos=0,dir=1,ch=0,note=60,spdKn=64,velL=100,velR=100},\r\n  {col=0xF81F,row=2,pos=0,dir=1,ch=0,note=67,spdKn=64,velL=100,velR=100},\r\n  {col=0x07FF,row=3,pos=0,dir=1,ch=0,note=72,spdKn=64,velL=100,velR=100},\r\n  {col=0xFFE0,row=4,pos=0,dir=1,ch=0,note=74,spdKn=64,velL=100,velR=100},\r\n  {col=0x07E0,row=5,pos=0,dir=1,ch=0,note=77,spdKn=64,velL=100,velR=100},\r\n  {col=0xFFFF,row=6,pos=0,dir=1,ch=0,note=79,spdKn=64,velL=100,velR=100},\r\n}\r\n\r\n-- global multiplier (GUI default 50 = \u00d71)\r\nlocal gMulKn = 50\r\nlocal gMul   = 1.0            -- effective multiplier\r\n\r\nlocal function refreshStep(b)  -- use global multiplier\r\n  local ms = knobToMs(b.spdKn) * gMul\r\n  b.step   = 127 * TICK_MS / ms\r\nend\r\nfor _,b in ipairs(balls) do refreshStep(b) end\r\n\r\n------------------------------------------------------------------\r\n-- RUN & RESET\r\n------------------------------------------------------------------\r\nlocal runMaster = 0\r\nfunction bRun(_,v) runMaster=(v==1) and 1 or 0 end\r\nfunction bReset(_,v)\r\n  if v==1 then\r\n     for _,b in ipairs(balls) do b.pos=0; b.dir=1 end\r\n     if canvas then canvas:repaint() end\r\n  end\r\nend\r\n\r\n------------------------------------------------------------------\r\n-- GLOBAL SPEED-MULTIPLIER  (new slider callback)\r\n------------------------------------------------------------------\r\nfunction gSpeed(_,v)              -- v 1\u2026100\r\n  gMulKn = clamp(v,1,100)\r\n  gMul   = gKnobToMul(gMulKn)\r\n  for _,b in ipairs(balls) do refreshStep(b) end\r\nend\r\n\r\n------------------------------------------------------------------\r\n-- per-ball GUI callbacks (auto-generated)\r\n------------------------------------------------------------------\r\nfor i=1,6 do\r\n  local id=\"b\"..i; local b=balls[i]\r\n  _G[id..\"Chan\"]  = function(_,v) b.ch   = clamp(v,1,16) end\r\n  _G[id..\"Note\"]  = function(_,v) b.note = clamp(v,0,127)  end\r\n  _G[id..\"Speed\"] = function(_,v) b.spdKn=clamp(v,0,127);  refreshStep(b) end\r\n  _G[id..\"VelL\"]  = function(_,v) b.velL = clamp(v,0,127)  end\r\n  _G[id..\"VelR\"]  = function(_,v) b.velR = clamp(v,0,127)  end\r\nend\r\n\r\n------------------------------------------------------------------\r\n-- MIDI ping\r\n------------------------------------------------------------------\r\nlocal function bang(b,vel)\r\n  midi.sendNoteOn (MIDI_PORT,b.ch,b.note,clamp(vel,0,127))\r\n  midi.sendNoteOff(MIDI_PORT,b.ch,b.note,0)\r\nend\r\n\r\n------------------------------------------------------------------\r\n-- TIMER\r\n------------------------------------------------------------------\r\ntimer.enable(); timer.setPeriod(TICK_MS)\r\nfunction timer.onTick()\r\n  if runMaster~=1 then return end\r\n  for _,b in ipairs(balls) do\r\n    b.pos=b.pos+b.dir*b.step\r\n    if b.dir==1 and b.pos>=127 then b.pos=127;b.dir=-1;bang(b,b.velR)\r\n    elseif b.dir==-1 and b.pos<=0 then b.pos=0;b.dir=1;bang(b,b.velL)\r\n    end\r\n  end\r\n  if canvas then canvas:repaint() end\r\nend\r\n\r\n------------------------------------------------------------------\r\n-- PAINTER\r\n------------------------------------------------------------------\r\nlocal function paintCanvas(ctrl)\r\n  local B=ctrl:getBounds(); local W,H=B[WIDTH],B[HEIGHT]\r\n  graphics.setColor(0x0000); graphics.fillRect(0,0,W,H)\r\n  graphics.setColor(0x4444); graphics.drawLine(2,0,2,H); graphics.drawLine(W-3,0,W-3,H)\r\n\r\n  local laneH=H/ROWS; local r=math.max(4,laneH*0.30); local travel=W-2*r-8\r\n  for _,b in ipairs(balls) do\r\n    local x=2+r+travel*b.pos/127\r\n    local y=laneH*(b.row-0.5)\r\n    graphics.setColor(b.col)\r\n    graphics.fillCircle(math.floor(x+0.5), math.floor(y+0.5), r)\r\n  end\r\nend\r\n\r\n------------------------------------------------------------------\r\n-- PRESET LOAD\r\n------------------------------------------------------------------\r\nfunction preset.onLoad()\r\n  canvas=controls.get(CANVAS_ID)\r\n  if canvas then\r\n      local B=canvas:getBounds(); B[WIDTH],B[HEIGHT]=W,H\r\n      canvas:setBounds(B); canvas:setPaintCallback(paintCanvas); canvas:repaint()\r\n  end\r\n\r\n  runMaster=controls.getValue(\"bRun\") or 0\r\n  gMulKn   = controls.getValue(\"gSpeed\") or 50\r\n  gMul     = gKnobToMul(gMulKn)\r\n\r\n  for i=1,6 do\r\n    local id=\"b\"..i; local b=balls[i]\r\n    b.ch   =(controls.getValue(id..\"Chan\")  or 1)\r\n    b.note =  controls.getValue(id..\"Note\")  or b.note\r\n    b.spdKn=  controls.getValue(id..\"Speed\") or 64\r\n    b.velL =  controls.getValue(id..\"VelL\")  or 100\r\n    b.velR =  controls.getValue(id..\"VelR\")  or 100\r\n    refreshStep(b)\r\n  end\r\nend\r\n",
+  "devices": [
+    {
+      "id": 1,
+      "name": "MIDI Device 1",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "19c47ce6-dcad-44ce-b2f1-e03155807fa5",
+      "reference": 2,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "speed",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 2,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 20,
+          "function": "b1Speed"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "8a4761a9-13d1-402a-bc33-4ae5298792e0",
+      "reference": 1,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "custom",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 1
+          }
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "cdc433a1-4a18-422f-9fe3-b17ea0b46c06",
+      "reference": 7,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "speed",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 7,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 20,
+          "function": "b2Speed"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "c49854cc-ae4b-4b75-8200-4d99aafb1b9b",
+      "reference": 13,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "note",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 120,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 37,
+          "function": "b1Note"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "c3f7719b-62ce-47df-bba5-99599beb2545",
+      "reference": 14,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "channel",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 3,
+            "min": 1,
+            "max": 16
+          },
+          "min": 1,
+          "max": 16,
+          "defaultValue": 4,
+          "function": "b1Chan"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "525adeef-93c3-4f84-bcd8-024103629bba",
+      "reference": 15,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "note",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 8,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 38,
+          "function": "b2Note"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "001ddc2f-8f23-4006-9772-ba484f9873df",
+      "reference": 16,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "channel",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 9,
+            "min": 1,
+            "max": 16
+          },
+          "min": 1,
+          "max": 16,
+          "defaultValue": 4,
+          "function": "b2Chan"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "21acab0d-9da9-4ec1-8700-53ac25b507b0",
+      "reference": 4,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "speed",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 4,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 20,
+          "function": "b3Speed"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "3458e61e-bcd1-4ea6-bb70-2e1c48f5de1e",
+      "reference": 10,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "note",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 15,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 39,
+          "function": "b3Note"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "12c75fc1-a78f-49f5-abc2-633a893f6264",
+      "reference": 17,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "channel",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 16,
+            "min": 1,
+            "max": 16
+          },
+          "min": 1,
+          "max": 16,
+          "defaultValue": 4,
+          "function": "b3Chan"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "e2f243f9-d6f1-4a09-8452-45e62e387daa",
+      "reference": 18,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "speed",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 18,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 20,
+          "function": "b4Speed"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "0340806b-e708-4542-ba35-ddd6454daee0",
+      "reference": 21,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "speed",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 21,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 20,
+          "function": "b5Speed"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "9fbfa2f1-f069-4d17-9c32-2aa4bffdfe02",
+      "reference": 24,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "speed",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 24,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 20,
+          "function": "b6Speed"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "7074ab7a-b8dd-4842-b540-ebb9cd6e89f1",
+      "reference": 27,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "note",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 26,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 40,
+          "function": "b4Note"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "93c18465-0a7d-4621-8b51-8d983c3d8168",
+      "reference": 28,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "channel",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 27,
+            "min": 1,
+            "max": 16
+          },
+          "min": 1,
+          "max": 16,
+          "defaultValue": 4,
+          "function": "b4Chan"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "65e89f71-3d2b-498c-b1e8-44ffe4c02780",
+      "reference": 29,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "note",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 28,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 41,
+          "function": "b5Note"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "02543b9c-2170-4e53-b90a-2c641fd17663",
+      "reference": 30,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "channel",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 29,
+            "min": 1,
+            "max": 16
+          },
+          "min": 1,
+          "max": 16,
+          "defaultValue": 4,
+          "function": "b5Chan"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "a0e2af8f-103d-4518-a4cc-f9446c307095",
+      "reference": 31,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "note",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 30,
+            "min": 0,
+            "max": 127
+          },
+          "min": 0,
+          "max": 127,
+          "defaultValue": 42,
+          "function": "b6Note"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "2d5a01c2-0af5-41b4-8d8b-8676e88b6050",
+      "reference": 32,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "channel",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 31,
+            "min": 1,
+            "max": 16
+          },
+          "min": 1,
+          "max": 16,
+          "defaultValue": 4,
+          "function": "b6Chan"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "d5bf7c53-553c-461b-b840-3bf139d77a5d",
+      "reference": 33,
+      "type": "list",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "pattern",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 32
+          },
+          "textValues": [
+            {
+              "value": 0,
+              "label": "manual"
+            },
+            {
+              "value": 1,
+              "label": "Uniform (500ms"
+            },
+            {
+              "value": 2,
+              "label": "Triplet Grid"
+            },
+            {
+              "value": 3,
+              "label": "3:4:5:6:7:8"
+            },
+            {
+              "value": 4,
+              "label": "Fibonacci"
+            },
+            {
+              "value": 5,
+              "label": "Up-Down"
+            }
+          ],
+          "function": "spdPreset"
+        }
+      ],
+      "visible": true
+    },
+    {
+      "id": "af0b9dfb-398e-4761-abaa-ed8760670670",
+      "reference": 6,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel1",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 40,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 50,
+          "function": "b1VelL"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "44a2f9b7-c7f5-4148-9b94-0f120ccad7ab",
+      "reference": 11,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel1",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 10,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 50,
+          "function": "b2VelL"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "4650d2ec-8502-4fd0-92c9-ece29cb08a71",
+      "reference": 5,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel1",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 13,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 50,
+          "function": "b3VelL"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "20684592-f76c-4e28-9bdf-cbf529fefc5f",
+      "reference": 19,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel1",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 118,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 50,
+          "function": "b4VelL"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "70a66c96-93ce-415a-95c5-53ece3584908",
+      "reference": 22,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel1",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 121,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 50,
+          "function": "b5VelL"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "466a4949-243d-47f8-922b-a469e85af6ac",
+      "reference": 25,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel1",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 124,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 50,
+          "function": "b6VelL"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "392d1400-b203-48f2-8cb2-1aa386898623",
+      "reference": 9,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel2",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 5,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 127,
+          "function": "b1VelR"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "1ac0eac6-1055-49d1-9142-faf0ce3f3c79",
+      "reference": 12,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel2",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 11,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 127,
+          "function": "b2VelR"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "2a7c6568-59cb-43e6-8e93-3c6b79212a74",
+      "reference": 8,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel2",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 14,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 127,
+          "function": "b3VelR"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "04938277-e330-4d7f-8ac4-34974ddda28d",
+      "reference": 20,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel2",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 19,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 127,
+          "function": "b4VelR"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "50914de1-2d33-446f-9ec6-672cc9b626d2",
+      "reference": 23,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel2",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 22,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 127,
+          "function": "b5VelR"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "9148d2f3-1e8c-4487-8297-31d784d506db",
+      "reference": 26,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "vel2",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "deviceId": 1,
+            "parameterNumber": 25,
+            "min": 0,
+            "max": 127
+          },
+          "defaultValue": 127,
+          "function": "b6VelR"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "ecd94b0c-33e6-41f7-9d4e-0433e124ad54",
+      "reference": 3,
+      "type": "pad",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "START",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 6,
+            "onValue": 1,
+            "offValue": 0
+          },
+          "defaultValue": "off",
+          "function": "bRun"
+        }
+      ],
+      "visible": true,
+      "mode": "toggle"
+    },
+    {
+      "id": "d4ed118b-32a9-4f81-bc88-2be5585212f7",
+      "reference": 34,
+      "type": "pad",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "reset",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "offValue": 0,
+            "onValue": 127,
+            "parameterNumber": 125
+          },
+          "defaultValue": "off",
+          "function": "bReset"
+        }
+      ],
+      "visible": true,
+      "mode": "momentary"
+    },
+    {
+      "id": "778abf2f-8590-4cc4-9c6d-64f53a27cdcd",
+      "reference": 35,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "global speed",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 126,
+            "min": 0,
+            "max": 127
+          },
+          "min": 1,
+          "max": 100,
+          "defaultValue": 50,
+          "function": "gSpeed"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    }
+  ],
+  "categories": [],
+  "layouts": [
+    {
+      "id": "mini-4x2",
+      "targetDevice": "mini",
+      "name": "Electra One Mini 4x2",
+      "slots": [],
+      "pages": {}
+    },
+    {
+      "id": "mk2-6x6",
+      "targetDevice": "mk2",
+      "name": "Electra One Mk2 6x6",
+      "slots": [
+        {
+          "id": 6,
+          "tile": {
+            "id": "20c78a6c-017a-47fd-b3d6-c72c361a179d",
+            "slotId": 6,
+            "type": "ref",
+            "tileId": "19c47ce6-dcad-44ce-b2f1-e03155807fa5"
+          }
+        },
+        {
+          "id": 7,
+          "tile": {
+            "id": "8ac4b19b-3eff-4fa0-84de-425261a70ac7",
+            "slotId": 7,
+            "type": "ref",
+            "tileId": "8a4761a9-13d1-402a-bc33-4ae5298792e0"
+          }
+        },
+        {
+          "id": 11,
+          "tile": {
+            "id": "46e4affe-23cf-4a07-84c5-b72a39088526",
+            "slotId": 11,
+            "type": "ref",
+            "tileId": "ecd94b0c-33e6-41f7-9d4e-0433e124ad54"
+          }
+        },
+        {
+          "id": 18,
+          "tile": {
+            "id": "fbc1881b-8506-45b1-9ec7-97a73e67d01e",
+            "slotId": 18,
+            "type": "ref",
+            "tileId": "cdc433a1-4a18-422f-9fe3-b17ea0b46c06"
+          }
+        },
+        {
+          "id": 23,
+          "tile": {
+            "id": "72696f13-eeb5-4b37-a4a2-028d4c42967e",
+            "slotId": 23,
+            "type": "ref",
+            "tileId": "d4ed118b-32a9-4f81-bc88-2be5585212f7"
+          }
+        },
+        {
+          "id": 30,
+          "tile": {
+            "id": "355f1de5-01fc-4568-a31b-f90899297b50",
+            "slotId": 30,
+            "type": "ref",
+            "tileId": "21acab0d-9da9-4ec1-8700-53ac25b507b0"
+          }
+        },
+        {
+          "id": 35,
+          "tile": {
+            "id": "09de3b7a-356b-43e5-9a7c-bdca3bc3b69b",
+            "slotId": 35,
+            "type": "ref",
+            "tileId": "778abf2f-8590-4cc4-9c6d-64f53a27cdcd"
+          }
+        },
+        {
+          "id": 42,
+          "tile": {
+            "id": "df5251b3-3e91-47d0-9e79-94323c257ea5",
+            "slotId": 42,
+            "type": "ref",
+            "tileId": "e2f243f9-d6f1-4a09-8452-45e62e387daa"
+          }
+        },
+        {
+          "id": 54,
+          "tile": {
+            "id": "e8cd52b4-7be4-49c3-b0f4-18913beb7483",
+            "slotId": 54,
+            "type": "ref",
+            "tileId": "0340806b-e708-4542-ba35-ddd6454daee0"
+          }
+        },
+        {
+          "id": 66,
+          "tile": {
+            "id": "d31b15c8-b7d1-4ca9-b557-c1a45c3f893d",
+            "slotId": 66,
+            "type": "ref",
+            "tileId": "9fbfa2f1-f069-4d17-9c32-2aa4bffdfe02"
+          }
+        },
+        {
+          "id": 78,
+          "tile": {
+            "id": "80936894-3b37-47bc-8eb1-c97992d573ee",
+            "slotId": 78,
+            "type": "ref",
+            "tileId": "c49854cc-ae4b-4b75-8200-4d99aafb1b9b"
+          }
+        },
+        {
+          "id": 79,
+          "tile": {
+            "id": "987eb9d3-7c58-4662-a87a-c1d94e8fc9cd",
+            "slotId": 79,
+            "type": "ref",
+            "tileId": "c3f7719b-62ce-47df-bba5-99599beb2545"
+          }
+        },
+        {
+          "id": 80,
+          "tile": {
+            "id": "0a410ba5-d5a7-40da-ac9b-e12e9698b85c",
+            "slotId": 80,
+            "type": "ref",
+            "tileId": "af0b9dfb-398e-4761-abaa-ed8760670670"
+          }
+        },
+        {
+          "id": 81,
+          "tile": {
+            "id": "468d822a-3c0a-43dd-a045-82715815d0df",
+            "slotId": 81,
+            "type": "ref",
+            "tileId": "392d1400-b203-48f2-8cb2-1aa386898623"
+          }
+        },
+        {
+          "id": 90,
+          "tile": {
+            "id": "021831b8-e709-4b87-98b2-7806afb099e9",
+            "slotId": 90,
+            "type": "ref",
+            "tileId": "525adeef-93c3-4f84-bcd8-024103629bba"
+          }
+        },
+        {
+          "id": 91,
+          "tile": {
+            "id": "daf92906-e46f-4594-a542-5b02c1183af3",
+            "slotId": 91,
+            "type": "ref",
+            "tileId": "001ddc2f-8f23-4006-9772-ba484f9873df"
+          }
+        },
+        {
+          "id": 92,
+          "tile": {
+            "id": "58b814c7-15ec-4659-9004-de7bf86a162d",
+            "slotId": 92,
+            "type": "ref",
+            "tileId": "44a2f9b7-c7f5-4148-9b94-0f120ccad7ab"
+          }
+        },
+        {
+          "id": 93,
+          "tile": {
+            "id": "57cb50b8-5957-40dd-99c3-a6d889f5961f",
+            "slotId": 93,
+            "type": "ref",
+            "tileId": "1ac0eac6-1055-49d1-9142-faf0ce3f3c79"
+          }
+        },
+        {
+          "id": 102,
+          "tile": {
+            "id": "34eba91e-2aeb-4666-b0c5-0c39bf1b226d",
+            "slotId": 102,
+            "type": "ref",
+            "tileId": "3458e61e-bcd1-4ea6-bb70-2e1c48f5de1e"
+          }
+        },
+        {
+          "id": 103,
+          "tile": {
+            "id": "99ac5bc6-027c-46cc-924b-e40ecd63fb03",
+            "slotId": 103,
+            "type": "ref",
+            "tileId": "12c75fc1-a78f-49f5-abc2-633a893f6264"
+          }
+        },
+        {
+          "id": 104,
+          "tile": {
+            "id": "f403c1c7-e380-4758-bead-a55586c1c548",
+            "slotId": 104,
+            "type": "ref",
+            "tileId": "4650d2ec-8502-4fd0-92c9-ece29cb08a71"
+          }
+        },
+        {
+          "id": 105,
+          "tile": {
+            "id": "5d200687-cbdb-457d-a79c-fad95209bc91",
+            "slotId": 105,
+            "type": "ref",
+            "tileId": "2a7c6568-59cb-43e6-8e93-3c6b79212a74"
+          }
+        },
+        {
+          "id": 114,
+          "tile": {
+            "id": "6337d36a-5bb3-44b4-b498-6b6f76579623",
+            "slotId": 114,
+            "type": "ref",
+            "tileId": "7074ab7a-b8dd-4842-b540-ebb9cd6e89f1"
+          }
+        },
+        {
+          "id": 115,
+          "tile": {
+            "id": "cf1e3db8-d9d4-483a-ab03-a669952fc1ca",
+            "slotId": 115,
+            "type": "ref",
+            "tileId": "93c18465-0a7d-4621-8b51-8d983c3d8168"
+          }
+        },
+        {
+          "id": 116,
+          "tile": {
+            "id": "842a1774-1d8d-4c94-94d5-da75c1c5963d",
+            "slotId": 116,
+            "type": "ref",
+            "tileId": "20684592-f76c-4e28-9bdf-cbf529fefc5f"
+          }
+        },
+        {
+          "id": 117,
+          "tile": {
+            "id": "caf73b82-6fd8-48fd-90ed-39b3fbe656cc",
+            "slotId": 117,
+            "type": "ref",
+            "tileId": "04938277-e330-4d7f-8ac4-34974ddda28d"
+          }
+        },
+        {
+          "id": 126,
+          "tile": {
+            "id": "86745eef-9d81-4352-974d-9f3c4653720f",
+            "slotId": 126,
+            "type": "ref",
+            "tileId": "65e89f71-3d2b-498c-b1e8-44ffe4c02780"
+          }
+        },
+        {
+          "id": 127,
+          "tile": {
+            "id": "af9b6210-5e76-49d8-a67e-7720dbc42147",
+            "slotId": 127,
+            "type": "ref",
+            "tileId": "02543b9c-2170-4e53-b90a-2c641fd17663"
+          }
+        },
+        {
+          "id": 128,
+          "tile": {
+            "id": "eab23334-2244-43cd-9fbe-be9c98b749fe",
+            "slotId": 128,
+            "type": "ref",
+            "tileId": "70a66c96-93ce-415a-95c5-53ece3584908"
+          }
+        },
+        {
+          "id": 129,
+          "tile": {
+            "id": "9dbad0ce-13c3-4fc3-a8f5-2a04e4324d55",
+            "slotId": 129,
+            "type": "ref",
+            "tileId": "50914de1-2d33-446f-9ec6-672cc9b626d2"
+          }
+        },
+        {
+          "id": 138,
+          "tile": {
+            "id": "1220e975-9134-44a0-ab01-f8a621d1b5ed",
+            "slotId": 138,
+            "type": "ref",
+            "tileId": "a0e2af8f-103d-4518-a4cc-f9446c307095"
+          }
+        },
+        {
+          "id": 139,
+          "tile": {
+            "id": "e4c649a2-93e9-44e3-8bde-fefcabbfbbb6",
+            "slotId": 139,
+            "type": "ref",
+            "tileId": "2d5a01c2-0af5-41b4-8d8b-8676e88b6050"
+          }
+        },
+        {
+          "id": 140,
+          "tile": {
+            "id": "8ba63851-cf05-405f-bf76-11e0e8b78979",
+            "slotId": 140,
+            "type": "ref",
+            "tileId": "466a4949-243d-47f8-922b-a469e85af6ac"
+          }
+        },
+        {
+          "id": 141,
+          "tile": {
+            "id": "bfab3591-cfca-4680-871a-0722a3927096",
+            "slotId": 141,
+            "type": "ref",
+            "tileId": "9148d2f3-1e8c-4487-8297-31d784d506db"
+          }
+        },
+        {
+          "id": 143,
+          "tile": {
+            "id": "cf6f93b1-99c4-4e69-ad4f-2850869a8471",
+            "slotId": 143,
+            "type": "ref",
+            "tileId": "d5bf7c53-553c-461b-b840-3bf139d77a5d"
+          }
+        }
+      ],
+      "pages": {
+        "1": {
+          "id": "1",
+          "name": "Page 1"
+        },
+        "2": {
+          "id": "2",
+          "name": "Page 2"
+        }
+      }
+    }
+  ],
+  "firstPageId": 1,
+  "_cache_meta": {
+    "source": "electra-one-public",
+    "id": "CBRYC9JppeZUzOqgCvBT",
+    "revision": "8",
+    "name": "metronomes",
+    "fetched_at": "2026-04-13"
+  }
+}

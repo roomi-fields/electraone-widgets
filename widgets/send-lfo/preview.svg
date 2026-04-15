@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" data-v-6e895712="" viewBox="0 0 1024 565" width="1024" height="565" class="display preview-image">
+    <style>
+        .name {
+      font-family: "Open Sans";
+      font-size: 16px;
+    }
+    .name-small {
+      font-family: "Open Sans";
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .slot-id-small {
+      font-family: "Open Sans";
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+    .value {
+      font-family: "Open Sans";
+      font-size: 16px;
+      font-weight: bold;
+    }
+    </style>
+    <defs>
+        <style type="text/css">
+            @import url("https://fonts.googleapis.com/css?family=Open+Sans:400,700&amp;display=swap");
+
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      text {
+        font-family: "Avenir", Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        color: #2c3e50;
+      }
+
+      .display {
+        background-color: black;
+      }
+        </style>
+    </defs>
+    <g variant="label" layoutId="mk2-6x6" id="8" pageId="1" bounds="682,6,325,16" type="label" _key="0">
+        <g style="filter: brightness(50%);">
+            <line x1="690" x2="799" y1="21" y2="21" stroke="#ffffff"/>
+            <line x1="891" x2="999" y1="21" y2="21" stroke="#ffffff"/>
+            <line x1="690" x2="690" y1="21" y2="21" stroke="#ffffff"/>
+            <line x1="999" x2="999" y1="21" y2="21" stroke="#ffffff"/>
+            <!---->
+        </g>
+        <text font-size="12" pad="16" x="845" y="22" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            OUTPUT SCOPE
+        </text>
+    </g>
+    <g transform="translate(20, 28)" variant="fader" layoutId="mk2-6x6" type="fader" visible="visible" bounds="20,28,146,56" pageId="1" _key="1">
+        <defs>
+            <clipPath id="clip-13498">
+                <rect x="2" y="2" width="142" height="52"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13498&quot;);">
+            <rect x="16" y="8" width="114" fill="#FFFFFF" rx="2" ry="2" height="24" fill-opacity="0.5"/>
+            <rect x="16" y="8" width="82" fill="#FFFFFF" rx="2" ry="2" height="24"/>
+            <text font-size="12" x="73" y="20" dy="0.10em" text-anchor="middle" alignment-baseline="middle" dominant-baseline="middle" fill="#000" class="value">
+                0 - 100
+            </text>
+            <text font-size="12" x="73" y="48" text-anchor="middle" alignment-baseline="middle" dominant-baseline="middle" fill="#fff" class="name">
+                RATE
+            </text>
+        </g>
+    </g>
+    <g transform="translate(187, 28)" variant="fader" layoutId="mk2-6x6" type="fader" visible="visible" bounds="187,28,146,56" pageId="1" _key="2">
+        <defs>
+            <clipPath id="clip-13503">
+                <rect x="2" y="2" width="142" height="52"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13503&quot;);">
+            <rect x="16" y="8" width="114" fill="#ffffff" rx="2" ry="2" height="24" fill-opacity="0.5"/>
+            <rect x="16" y="8" width="82" fill="#ffffff" rx="2" ry="2" height="24"/>
+            <text font-size="12" x="73" y="20" dy="0.10em" text-anchor="middle" alignment-baseline="middle" dominant-baseline="middle" fill="#000" class="value">
+                0 - 360
+            </text>
+            <text font-size="12" x="73" y="48" text-anchor="middle" alignment-baseline="middle" dominant-baseline="middle" fill="#fff" class="name">
+                PHASE
+            </text>
+        </g>
+    </g>
+    <g transform="translate(354, 28)" variant="fader" layoutId="mk2-6x6" type="fader" visible="visible" bounds="354,28,146,56" pageId="1" _key="3">
+        <defs>
+            <clipPath id="clip-13508">
+                <rect x="2" y="2" width="142" height="52"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13508&quot;);">
+            <rect x="16" y="8" width="114" fill="#ffffff" rx="2" ry="2" height="24" fill-opacity="0.5"/>
+            <rect x="16" y="8" width="82" fill="#ffffff" rx="2" ry="2" height="24"/>
+            <text font-size="12" x="73" y="20" dy="0.10em" text-anchor="middle" alignment-baseline="middle" dominant-baseline="middle" fill="#000" class="value">
+                0 - 100
+            </text>
+            <text font-size="12" x="73" y="48" text-anchor="middle" alignment-baseline="middle" dominant-baseline="middle" fill="#fff" class="name">
+                AMPLITUDE
+            </text>
+        </g>
+    </g>
+    <g transform="translate(521, 28)" variant="fader" layoutId="mk2-6x6" type="fader" visible="visible" bounds="521,28,146,56" pageId="1" _key="4">
+        <defs>
+            <clipPath id="clip-13513">
+                <rect x="2" y="2" width="142" height="52"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-13513&quot;);">
+            <rect x="16" y="8" width="114" fill="#ffffff" rx="2" ry="2" height="24" fill-opacity="0.5"/>
+            <rect x="16" y="8" width="82" fill="#ffffff" rx="2" ry="2" height="24"/>
+            <text font-size="12" x="73" y="20" dy="0.10em" text-anchor="middle" alignment-baseline="middle" dominant-baseline="middle" fill="#000" class="value">
+                0 - 100
+            </text>
+            <text font-size="12" x="73" y="48" text-anchor="middle" alignment-baseline="middle" dominant-baseline="middle" fill="#fff" class="name">
+                PULSE WIDTH
+            </text>
+        </g>
+    </g>
+    <g transform="translate(688, 28)" variant="custom" layoutId="mk2-6x6" type="custom" bounds="688,28,146,56" pageId="1" _key="5">
+        <rect x="16" y="5" width="114" height="41" stroke="#ffffff" rx="4" ry="4" stroke-dasharray="2" fill-opacity="0.5" style="z-index: 1;"/>
+        <text font-size="12" x="73" y="28" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            CUSTOM
+        </text>
+    </g>
+    <g transform="translate(20, 118)" mode="momentary" variant="pad" layoutId="mk2-6x6" type="pad" visible="visible" bounds="20,118,146,56" pageId="1" _key="6">
+        <rect x="16" y="5" width="114" height="46" fill="#628912" stroke="#628912" rx="4" ry="4" fill-opacity="0.2" stroke-opacity="0.2"/>
+        <text font-size="12" x="73" y="28" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            RUN
+        </text>
+    </g>
+    <g transform="translate(187, 118)" mode="momentary" variant="pad" layoutId="mk2-6x6" type="pad" visible="visible" bounds="187,118,146,56" pageId="1" _key="7">
+        <rect x="16" y="5" width="114" height="46" fill="#CE181D" stroke="#CE181D" rx="4" ry="4" fill-opacity="0.2" stroke-opacity="0.2"/>
+        <text font-size="12" x="73" y="28" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            STOP
+        </text>
+    </g>
+</svg>

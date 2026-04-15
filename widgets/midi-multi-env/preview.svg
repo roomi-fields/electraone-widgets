@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" data-v-1a61d7ae="" viewBox="0 0 996 560" width="1024" height="600" class="display preview-image">
+    <style>
+        .name {
+    font-family: 'Open Sans';
+    font-size: 16px;
+    }
+    .name-small {
+    font-family: 'Open Sans';
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 600;
+    }
+    .slot-id-small {
+    font-family: 'Open Sans';
+    font-size: 10px;
+    text-transform: uppercase;
+    }
+    .value {
+    font-family: 'Open Sans';
+    font-size: 16px;
+    font-weight: bold;
+    }
+    </style>
+    <defs>
+        <style type="text/css">
+            @import url('https://fonts.googleapis.com/css?family=Open+Sans:400,700&amp;display=swap');
+
+      body {
+      margin: 0;
+      padding: 0;
+      }
+
+      text {
+      font-family: 'Avenir', Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      color: #2c3e50;
+      }
+
+      .display {
+      background-color: black;
+      }
+        </style>
+    </defs>
+    <g id="2" pageId="1" bounds="515,456,158,81">
+        <line x1="523" x2="556" y1="471" y2="471" stroke="#529DEC" stroke-dasharray="1, 1"/>
+        <line x1="644" x2="677" y1="471" y2="471" stroke="#529DEC" stroke-dasharray="1, 1"/>
+        <line x1="523" x2="523" y1="471" y2="479" stroke="#529DEC" stroke-dasharray="1, 1"/>
+        <line x1="677" x2="677" y1="471" y2="479" stroke="#529DEC" stroke-dasharray="1, 1"/>
+        <!---->
+        <rect x="530" y="463" width="140" height="16" rx="2" ry="2" fill="#529DEC" style="filter: brightness(35%);"/>
+        <text x="600" y="472" text-anchor="middle" alignment-baseline="middle" fill="#ffffff" class="name-small">
+            ENV SELECT
+        </text>
+    </g>
+    <g type="fader" visible="visible" bounds="187,388,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-4029">
+                <rect x="189" y="390" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-4029&quot;);">
+            <rect x="203" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="203" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="266" y="408" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="266" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                START
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="354,388,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-4030">
+                <rect x="356" y="390" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-4030&quot;);">
+            <rect x="370" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="370" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="433" y="408" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="433" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                END
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="688,388,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-4031">
+                <rect x="690" y="390" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-4031&quot;);">
+            <rect x="704" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="704" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="767" y="408" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="767" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                START
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="855,388,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-4032">
+                <rect x="857" y="390" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-4032&quot;);">
+            <rect x="871" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="871" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="934" y="408" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="934" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                END
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="20,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-4033">
+                <rect x="22" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-4033&quot;);">
+            <rect x="36" y="506" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="36" y="506" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="99" y="498" text-anchor="middle" fill="#ffffff" class="value">
+                1 - 8
+            </text>
+            <text x="99" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                ENV STAGE
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="187,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-4034">
+                <rect x="189" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-4034&quot;);">
+            <rect x="203" y="506" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="203" y="506" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="266" y="498" text-anchor="middle" fill="#ffffff" class="value">
+                0 - 127
+            </text>
+            <text x="266" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                TIME
+            </text>
+        </g>
+    </g>
+    <g type="fader" visible="visible" bounds="354,478,146,56" pageId="1">
+        <defs>
+            <clipPath id="clip-4035">
+                <rect x="356" y="480" width="154" height="56"/>
+            </clipPath>
+        </defs>
+        <g style="clip-path: url(&quot;#clip-4035&quot;);">
+            <rect x="370" y="506" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="370" y="506" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
+            <text x="433" y="498" text-anchor="middle" fill="#ffffff" class="value">
+                0 - 127
+            </text>
+            <text x="433" y="530" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
+                LEVEL
+            </text>
+        </g>
+    </g>
+    <g type="pad" mode="toggle" visible="visible" bounds="20,388,146,56" pageId="1">
+        <rect x="36" y="393" width="126" height="45" fill="#ffffff" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
+        <rect x="36" y="393" width="126" height="48" fill="#ffffff" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
+        <text x="99" y="418" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            KEY ON LOOP
+        </text>
+    </g>
+    <g type="pad" mode="toggle" visible="visible" bounds="521,388,146,56" pageId="1">
+        <rect x="537" y="393" width="126" height="45" fill="#ffffff" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
+        <rect x="537" y="393" width="126" height="48" fill="#ffffff" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
+        <text x="600" y="418" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            KEY OFF LOOP
+        </text>
+    </g>
+    <g type="pad" mode="toggle" visible="visible" bounds="521,478,146,56" pageId="1">
+        <rect x="537" y="483" width="126" height="45" fill="#ffffff" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
+        <rect x="537" y="483" width="126" height="48" fill="#ffffff" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
+        <text x="600" y="508" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            ENV SELECT
+        </text>
+    </g>
+    <g type="custom" visible="visible" bounds="20,28,146,56" pageId="1">
+        <rect x="36" y="33" width="126" height="45" stroke="#F45C51" rx="4" ry="4" stroke-dasharray="2" fill-opacity="0.2" style="z-index: 1;"/>
+        <text x="99" y="58" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
+            CUSTOM X
+        </text>
+    </g>
+</svg>

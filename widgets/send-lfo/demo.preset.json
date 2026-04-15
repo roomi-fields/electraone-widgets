@@ -1,0 +1,378 @@
+{
+  "schemaVersion": 3,
+  "targetDevice": "mk2",
+  "id": "hXZd5qXpoMx82gIz6qWP",
+  "name": "Send LFO",
+  "description": "",
+  "lua": "-- Global variables\n--\nlocal SCOPE_WIDTH = 314\nlocal SCOPE_HEIGHT = 140\n\n-- Shortcut for graphics object\nlocal g = graphics\n\n-- The Scope control\nlocal scopeControl = controls.get(7)\n\n-- Scope buffer (one sample per pixel column)\nlocal scope = {\n    y = {},\n}\n\n-- Initialize the preset\n--\nfunction preset.onLoad()\n    local bounds = scopeControl:getBounds()\n    bounds[WIDTH] = SCOPE_WIDTH\n    bounds[HEIGHT] = SCOPE_HEIGHT\n    scopeControl:setBounds(bounds)\n\n    -- Initialize and assign Custom Control callbacks\n    initializeScopeData();\n    scopeControl:setPaintCallback(paintScope)\n    scopeControl:repaint()\nend\n\n-- Sample usage (assuming timer updates every 1 ms)\nlocal timerInterval = 0.01  -- 1 ms in seconds\n\n-- Enable timer\ntimer.setPeriod (10)\n\n-- Acquire a Data pipe\nlocal pipeOutput = pipe.acquire(\"output\");\n\n-- Read default values\nlocal defaultPulseWidth = parameterMap.get(1, PT_VIRTUAL, 4) / 100\n\n-- Initialize LFO parameters\nlocal lfo = {\n    frequency = 0.1,               -- Initial frequency in Hz\n    phase = 0.0,                  -- Phase of the waveform\n    amplitude = 1.0,               -- Amplitude of the waveform (-0.5 to 0.5)\n    pulseWidth = defaultPulseWidth,  -- Pulse width for square waveform (0.0 to 1.0)\n    dcOffset = 0.0,                -- DC offset for all waveforms (-0.5 to 0.5)\n}\n\n-- Update LFO state based on time interval\nfunction updateLFO(dt)\n    lfo.phase = lfo.phase + lfo.frequency * dt\n    if lfo.phase >= 1.0 then\n        lfo.phase = lfo.phase - 1.0\n    end\nend\n\n-- Calculate and get the current LFO value\nfunction getLFOSawtooth()\n    local value = (lfo.phase * 2 - 1) * lfo.amplitude + lfo.dcOffset\n    return value\nend\n\nfunction getLFOSquare()\n    local value = (lfo.phase < lfo.pulseWidth and lfo.amplitude or -lfo.amplitude) + lfo.dcOffset\n    return value\nend\n\nfunction getLFOTriangle()\n    local value = (lfo.phase < 0.5 and (lfo.phase * 4 - 1) * lfo.amplitude\n                  or ((1.0 - lfo.phase) * 4 - 1) * lfo.amplitude) + lfo.dcOffset\n    return value\nend\n\nfunction getLFOSine()\n    local value = math.sin(lfo.phase * 2 * math.pi) * lfo.amplitude + lfo.dcOffset\n    return value\nend\n\n-- timer callback\nfunction timer.onTick ()\n    updateLFO(timerInterval)\n    local lfoSawtooth = getLFOSawtooth()\n    local lfoSquare   = getLFOSquare()\n    local lfoTriangle = getLFOTriangle()\n    local lfoSine     = getLFOSine()\n\n    -- Currently, only the triangle waveform is sent to Data pipe channel #1\n    pipe.send(pipeOutput, lfoTriangle)\n\n    -- Scroll left and append newest sample\n    for i = 1, SCOPE_WIDTH - 1 do\n        scope.y[i] = scope.y[i + 1]\n    end\n    scope.y[SCOPE_WIDTH] = lfoTriangle  -- draw what we actually output\n    scopeControl:repaint()\nend\n\n-- Setters\nfunction setRate(valueObject, value)\n    lfo.frequency = percentageToRate(value)\nend\n\nfunction setPulseWidth(valueObject, value)\n    lfo.pulseWidth = value / 100\nend\n\n-- LFO state control\nfunction run(valueObject, value)\n    timer.enable()\n    info.setText(\"Running\")\nend\n\nfunction stop(valueObject, value)\n    timer.disable()\n    info.setText(\"\")\nend\n\n\n-- helpers\nfunction percentageToRate(number)\n    if number < 0 or number > 100 then\n        return nil  -- Number is out of range\n    end\n    \n    local minInput = 0\n    local maxInput = 100\n    local minOutput = 0.1\n    local maxOutput = 10\n    \n    local normalizedInput = (number - minInput) / (maxInput - minInput)\n    local exponent = 3  -- You can adjust this to control the rate of exponential growth\n    \n    local normalizedOutput = normalizedInput ^ exponent\n    local output = minOutput + (maxOutput - minOutput) * normalizedOutput\n    \n    return output\nend\n\n-- formatters\nfunction getFrequency(valueObject, value)\n    return string.format(\"%.2fHz\", lfo.frequency)\nend\n\nfunction getPulseWidth(valueObject, value)\n    return string.format(\"%.0f%%\", lfo.pulseWidth * 100)\nend\n\n-- A callback to draw the XY pad graphics\n--\nfunction paintScope(control, value)\n    local bounds = control:getBounds()\n    local left   = 0\n    local right  = bounds[WIDTH] - 1\n    local top    = 0\n    local bottom = bounds[HEIGHT] - 1\n\n    -- Clear the Control's bounding box\n    g.setColor(0x0000)\n    g.fillRect(0, 0, bounds[WIDTH], bounds[HEIGHT])\n    g.setColor(0xffff)\n    g.drawRoundRect(0, 0, bounds[WIDTH], bounds[HEIGHT], 5)\n\n    -- midline\n    g.setColor(0x7bef) -- light gray\n    local mid = normToPixel(0, top + 4, bottom - 4)\n    g.drawLine(left + 4, mid, right - 4, mid)\n\n    -- signal trace\n    g.setColor(0xffff)\n    local lastx = left + 4\n    local lasty = normToPixel(scope.y[1], top + 4, bottom - 4)\n    for x = 2, math.min(SCOPE_WIDTH - 4, right - 4) do\n        local y = normToPixel(scope.y[x], top + 4, bottom - 4)\n        g.drawLine(lastx, lasty, x, y)\n        lastx, lasty = x, y\n    end\nend\n\n-- Map normalized [-1,1] to pixel Y inside the scope rect\nfunction normToPixel(n, top, bottom)\n    local center = (top + bottom) * 0.5\n    local amp    = (bottom - top) * 0.5\n    return math.floor(center - n * amp + 0.5)\nend\n\n-- Zero the scope data\nfunction initializeScopeData()\n    for i = 1, SCOPE_WIDTH do scope.y[i] = 0 end\nend\n\nfunction setAmplitude(valueObject, value)   -- value is 0..100\n    lfo.amplitude = (value or 100) / 100\nend\n\nfunction setPhase(valueObject, value)       -- value is 0..100 (% of a cycle)\n    lfo.phase = ((value or 0) / 100) % 1.0\nend\n",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Generic MIDI",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "8221391b-1188-4f1c-81b9-9bf2f166f0a9",
+      "type": "label",
+      "name": "Output scope",
+      "categoryId": "label",
+      "group": "labels",
+      "default": true,
+      "deviceId": 1,
+      "color": "ffffff",
+      "reference": 8,
+      "span": 2,
+      "variant": ""
+    },
+    {
+      "id": "cb85b855-c372-4e65-be72-17f29d9adcde",
+      "reference": 1,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "Rate",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1,
+            "min": 0,
+            "max": 100
+          },
+          "formatter": "getFrequency",
+          "function": "setRate"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "87030bda-b30c-4561-8a4b-0268ec991802",
+      "reference": 2,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Phase",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 2,
+            "min": 0,
+            "max": 100
+          },
+          "min": 0,
+          "max": 360,
+          "function": "setPhase"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "781be52b-a02b-409d-bbc5-90c8965bf82b",
+      "reference": 3,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Amplitude",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 3,
+            "min": 0,
+            "max": 100
+          },
+          "defaultValue": 100,
+          "function": "setAmplitude"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "ec7ebba8-0248-46a2-8717-b20553322785",
+      "reference": 4,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "ffffff",
+      "name": "Pulse Width",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 7,
+            "min": 0,
+            "max": 100
+          },
+          "min": 0,
+          "max": 100,
+          "defaultValue": 50,
+          "formatter": "getPulseWidth",
+          "function": "setPulseWidth"
+        }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "ee5fe032-c95d-4c73-b304-7fc62883ca1a",
+      "type": "custom",
+      "name": "Custom",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "parameterNumber": 8
+          }
+        }
+      ],
+      "categoryId": "control",
+      "group": "customs",
+      "default": true,
+      "deviceId": 1,
+      "color": "ffffff",
+      "reference": 7
+    },
+    {
+      "id": "bb696430-c70e-4f37-919c-30e0c98ff060",
+      "reference": 5,
+      "type": "pad",
+      "deviceId": 1,
+      "color": "628912",
+      "name": "RUN",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "offValue": 0,
+            "onValue": 127,
+            "parameterNumber": 5
+          },
+          "defaultValue": "off",
+          "function": "run"
+        }
+      ],
+      "visible": true,
+      "mode": "momentary"
+    },
+    {
+      "id": "f30f3f7a-482b-4a8f-ac55-4903646609a4",
+      "reference": 6,
+      "type": "pad",
+      "deviceId": 1,
+      "color": "CE181D",
+      "name": "STOP",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "cc7",
+            "offValue": 0,
+            "onValue": 127,
+            "parameterNumber": 6
+          },
+          "defaultValue": "off",
+          "function": "stop"
+        }
+      ],
+      "visible": true,
+      "mode": "momentary"
+    }
+  ],
+  "categories": [],
+  "layouts": [
+    {
+      "id": "mini-4x2",
+      "targetDevice": "mini",
+      "name": "Electra One Mini 4x2",
+      "slots": [
+        {
+          "id": 2,
+          "tile": {
+            "id": "79169d82-a475-4d37-a0d6-1698cf2fb2ba",
+            "slotId": 2,
+            "type": "ref",
+            "tileId": "8221391b-1188-4f1c-81b9-9bf2f166f0a9"
+          }
+        },
+        {
+          "id": 4,
+          "tile": {
+            "id": "81fefef8-79d0-4fab-ae46-3f90aabef588",
+            "slotId": 4,
+            "type": "ref",
+            "tileId": "cb85b855-c372-4e65-be72-17f29d9adcde"
+          }
+        },
+        {
+          "id": 5,
+          "tile": {
+            "id": "000faa20-09a2-4ea8-808a-b2121184b639",
+            "slotId": 5,
+            "type": "ref",
+            "tileId": "87030bda-b30c-4561-8a4b-0268ec991802"
+          }
+        },
+        {
+          "id": 6,
+          "tile": {
+            "id": "a4335d7d-87d0-4060-bc0b-3be46994b5c3",
+            "slotId": 6,
+            "type": "ref",
+            "tileId": "ee5fe032-c95d-4c73-b304-7fc62883ca1a"
+          }
+        },
+        {
+          "id": 12,
+          "tile": {
+            "id": "f57b79ca-b06e-460d-a29a-0ce7b3b5040a",
+            "slotId": 12,
+            "type": "ref",
+            "tileId": "781be52b-a02b-409d-bbc5-90c8965bf82b"
+          }
+        },
+        {
+          "id": 13,
+          "tile": {
+            "id": "cc1e8bcb-6519-4666-abaf-eb0b1cbd6fac",
+            "slotId": 13,
+            "type": "ref",
+            "tileId": "ec7ebba8-0248-46a2-8717-b20553322785"
+          }
+        },
+        {
+          "id": 22,
+          "tile": {
+            "id": "d26e368f-1bbe-4d88-b6a7-f493d6ba59ea",
+            "slotId": 22,
+            "type": "ref",
+            "tileId": "bb696430-c70e-4f37-919c-30e0c98ff060"
+          }
+        },
+        {
+          "id": 23,
+          "tile": {
+            "id": "d0fbf4a8-453b-49be-9a47-e47003010350",
+            "slotId": 23,
+            "type": "ref",
+            "tileId": "f30f3f7a-482b-4a8f-ac55-4903646609a4"
+          }
+        }
+      ],
+      "pages": {
+        "1": {
+          "id": "1",
+          "name": "Page 1"
+        }
+      }
+    },
+    {
+      "id": "mk2-6x6",
+      "targetDevice": "mk2",
+      "name": "Electra One Mk2 6x6",
+      "slots": [
+        {
+          "id": 4,
+          "tile": {
+            "id": "82136de9-99e8-46ef-91c0-5688b622e8f3",
+            "slotId": 4,
+            "type": "ref",
+            "tileId": "8221391b-1188-4f1c-81b9-9bf2f166f0a9"
+          }
+        },
+        {
+          "id": 6,
+          "tile": {
+            "id": "24b66d6a-f38a-4bc3-b3b3-18d0b6a0204e",
+            "slotId": 6,
+            "type": "ref",
+            "tileId": "cb85b855-c372-4e65-be72-17f29d9adcde"
+          }
+        },
+        {
+          "id": 7,
+          "tile": {
+            "id": "4003e3d2-c0d9-43c5-9387-b3ebd50f5004",
+            "slotId": 7,
+            "type": "ref",
+            "tileId": "87030bda-b30c-4561-8a4b-0268ec991802"
+          }
+        },
+        {
+          "id": 8,
+          "tile": {
+            "id": "319e5678-520d-42f8-aa80-7f9bfaffcb82",
+            "slotId": 8,
+            "type": "ref",
+            "tileId": "781be52b-a02b-409d-bbc5-90c8965bf82b"
+          }
+        },
+        {
+          "id": 9,
+          "tile": {
+            "id": "73eb726d-cc7b-4458-95f8-f83ade35fd3e",
+            "slotId": 9,
+            "type": "ref",
+            "tileId": "ec7ebba8-0248-46a2-8717-b20553322785"
+          }
+        },
+        {
+          "id": 10,
+          "tile": {
+            "id": "420aaf60-684e-4ef4-8b34-d1aefd033e53",
+            "slotId": 10,
+            "type": "ref",
+            "tileId": "ee5fe032-c95d-4c73-b304-7fc62883ca1a"
+          }
+        },
+        {
+          "id": 18,
+          "tile": {
+            "id": "5eb61f22-9473-4478-a089-6f0aec1d27ed",
+            "slotId": 18,
+            "type": "ref",
+            "tileId": "bb696430-c70e-4f37-919c-30e0c98ff060"
+          }
+        },
+        {
+          "id": 19,
+          "tile": {
+            "id": "253720b9-bce9-4493-a3c1-0b028fce6395",
+            "slotId": 19,
+            "type": "ref",
+            "tileId": "f30f3f7a-482b-4a8f-ac55-4903646609a4"
+          }
+        }
+      ],
+      "pages": {
+        "1": {
+          "id": "1",
+          "name": "Page 1"
+        }
+      }
+    }
+  ],
+  "firstPageId": 1,
+  "_cache_meta": {
+    "source": "electra-one-public",
+    "id": "hXZd5qXpoMx82gIz6qWP",
+    "revision": "80",
+    "name": "Send LFO",
+    "fetched_at": "2026-04-13"
+  }
+}

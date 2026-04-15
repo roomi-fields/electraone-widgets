@@ -1,0 +1,19 @@
+# [Lua] Graphics
+
+> **Credits** · Original author: **Martin Pavlas (Electra One creator)**
+> **Source**: https://app.electra.one/preset/4H2c4AvYhDGJ2tiZFYwY
+> **Schema**: v2 · **Imported**: 2026-04-15
+> **License at source**: none specified — imported with attribution under [NOTICE.md](../../NOTICE.md).
+
+## Description
+
+(No description provided by author.)
+
+## Integration
+
+Load `demo.preset.json` in the Electra One editor (`app.electra.one`) — the Lua is embedded in the `lua` field.
+For manual reuse, copy `widget.lua` into your own preset's Lua script.
+
+## Category
+
+Custom-paint widget — uses `setPaintCallback` / `setTouchCallback`.

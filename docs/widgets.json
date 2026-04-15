@@ -1,5 +1,17 @@
 [
   {
+    "slug": "cube-lfo",
+    "name": "Cube LFO",
+    "description": "(No description provided by author.)",
+    "previewExt": "svg"
+  },
+  {
+    "slug": "custom-with-2-parms",
+    "name": "Custom with 2 parms",
+    "description": "(No description provided by author.)",
+    "previewExt": "svg"
+  },
+  {
     "slug": "eg-template",
     "name": "EG Template — 7-variant Envelope Generator",
     "description": "A versatile envelope generator preset built on the MK2's native 4-stage envelope tile (`dx7envelope`), re-rendered dynamically by Lua to present **7 different envelope types** from a single control:",
@@ -12,10 +24,46 @@
     "previewExt": "svg"
   },
   {
+    "slug": "loopop-tombola",
+    "name": "Loopop's Tombola",
+    "description": "Demo of graphics handled in the timer interrupt handler",
+    "previewExt": "svg"
+  },
+  {
+    "slug": "lua-graphics",
+    "name": "[Lua] Graphics",
+    "description": "(No description provided by author.)",
+    "previewExt": "svg"
+  },
+  {
     "slug": "lua-lfo",
     "name": "Lua LFO",
     "description": "A free-running LFO implemented entirely in Lua on the Electra One, driven by the built-in 20 ms `timer.onTick()`. Modulates any CC on the target device with a selectable shape and depth, and supports **note-on phase reset** with a variable seed.",
     "previewExt": null
+  },
+  {
+    "slug": "lua-xy-pad",
+    "name": "[Lua] XY Pad",
+    "description": "(No description provided by author.)",
+    "previewExt": "svg"
+  },
+  {
+    "slug": "metronomes",
+    "name": "metronomes",
+    "description": "(No description provided by author.)",
+    "previewExt": "svg"
+  },
+  {
+    "slug": "midi-multi-env",
+    "name": "MIDI multi env",
+    "description": "(No description provided by author.)",
+    "previewExt": "svg"
+  },
+  {
+    "slug": "mini-cube-lfo",
+    "name": "Mini Cube LFO",
+    "description": "Demo of graphics handled in the timer interrupt handler",
+    "previewExt": "svg"
   },
   {
     "slug": "modwheel-at-router",
@@ -24,10 +72,22 @@
     "previewExt": null
   },
   {
+    "slug": "multi-env-encoders",
+    "name": "multi env encoders",
+    "description": "(No description provided by author.)",
+    "previewExt": "svg"
+  },
+  {
     "slug": "resonance-compensation",
     "name": "Resonance Compensation",
     "description": "On ladder-filter synths (Moog Minitaur, Sub 37, Voyager, and clones), pushing resonance up drains bass and perceived volume. This widget **auto-boosts volume (CC 7) by 70% of the current resonance value**, restoring perceived loudness.",
     "previewExt": null
+  },
+  {
+    "slug": "send-lfo",
+    "name": "Send LFO",
+    "description": "(No description provided by author.)",
+    "previewExt": "svg"
   },
   {
     "slug": "xt-envelopes",
