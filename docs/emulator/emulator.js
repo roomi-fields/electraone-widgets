@@ -524,6 +524,17 @@ function setupEnv(L, stage) {
     sendClock: () => {}, sendStart: () => {}, sendStop: () => {},
   });
   lua.lua_setglobal(L, to_luastring("midi"));
+
+  // pipe — inter-preset data channels. Stubbed: acquire returns a unique id,
+  // send/release are no-ops. Widgets that only *produce* on a pipe still run.
+  let pipeIdSeq = 0;
+  pushObject(L, {
+    acquire: (_name) => ++pipeIdSeq,
+    send: () => {},
+    release: () => {},
+  });
+  lua.lua_setglobal(L, to_luastring("pipe"));
+
   // timer — provides actual tick loop so animated widgets run
   stage.timerState = { intervalId: null, periodMs: 20 };
   const doTick = () => {
@@ -608,10 +619,6 @@ function setupEnv(L, stage) {
 function fireParameterChange(stage, tile, midiValue) {
   const L = stage.L;
   if (!L) return;
-  lua.lua_getglobal(L, to_luastring("parameterMap"));
-  lua.lua_getfield(L, -1, to_luastring("onChange"));
-  if (!lua.lua_isfunction(L, -1)) { lua.lua_pop(L, 2); return; }
-  lua.lua_createtable(L, 1, 0);
   const mockControl = { getId: () => tile.ref, getName: () => tile.name || "", getColor: () => 0xFFFFFF };
   const mockMessage = {
     getValue: () => midiValue,
@@ -629,16 +636,25 @@ function fireParameterChange(stage, tile, midiValue) {
     getMin: () => tile.msgMin ?? 0, getMax: () => tile.msgMax ?? 127,
     getDefault: () => 64,
   };
-  pushJSAsLua(L, mockVO);
-  lua.lua_seti(L, -2, 1);
-  lua.lua_pushnumber(L, 0);                  // origin (USER)
-  lua.lua_pushnumber(L, midiValue);
-  if (lua.lua_pcall(L, 3, 0, 0) !== 0) {
-    logMsg("parameterMap.onChange err: " + safeTostring(L, -1), "err");
+  // Fire parameterMap.onChange if the widget defined one
+  lua.lua_getglobal(L, to_luastring("parameterMap"));
+  lua.lua_getfield(L, -1, to_luastring("onChange"));
+  if (lua.lua_isfunction(L, -1)) {
+    lua.lua_createtable(L, 1, 0);
+    pushJSAsLua(L, mockVO);
+    lua.lua_seti(L, -2, 1);
+    lua.lua_pushnumber(L, 0);                  // origin (USER)
+    lua.lua_pushnumber(L, midiValue);
+    if (lua.lua_pcall(L, 3, 0, 0) !== 0) {
+      logMsg("parameterMap.onChange err: " + safeTostring(L, -1), "err");
+      lua.lua_pop(L, 1);
+    }
+  } else {
     lua.lua_pop(L, 1);
   }
   lua.lua_pop(L, 1); // parameterMap
-  // Also invoke per-value callback (e.g. xCcChanged) if the preset defined one
+
+  // Also invoke per-value callback (e.g. xCcChanged, run, stop) if defined
   if (tile.fnName) {
     lua.lua_getglobal(L, to_luastring(tile.fnName));
     if (lua.lua_isfunction(L, -1)) {
@@ -730,12 +746,33 @@ function createNativeTileOverlays(stage) {
       });
       el.addEventListener("pointerup", () => { dragging = false; });
     } else if (tile.type === "pad") {
-      el.addEventListener("click", () => {
-        const v = stage.tileValues[tile.ref] ? 0 : 127;
-        stage.tileValues[tile.ref] = v;
-        updateTileVisual(tile, v);
-        fireParameterChange(stage, tile, v);
-      });
+      if (tile.mode === "momentary") {
+        // Fire on value on press, off value on release — matches the MK2
+        // behaviour where a tap triggers one pulse.
+        const onV = tile.msgOn ?? 127, offV = tile.msgOff ?? 0;
+        el.addEventListener("pointerdown", (ev) => {
+          ev.preventDefault();
+          stage.tileValues[tile.ref] = onV;
+          updateTileVisual(tile, onV);
+          fireParameterChange(stage, tile, onV);
+        });
+        const release = () => {
+          if (stage.tileValues[tile.ref] !== offV) {
+            stage.tileValues[tile.ref] = offV;
+            updateTileVisual(tile, offV);
+            fireParameterChange(stage, tile, offV);
+          }
+        };
+        el.addEventListener("pointerup", release);
+        el.addEventListener("pointerleave", release);
+      } else {
+        el.addEventListener("click", () => {
+          const v = stage.tileValues[tile.ref] ? 0 : 127;
+          stage.tileValues[tile.ref] = v;
+          updateTileVisual(tile, v);
+          fireParameterChange(stage, tile, v);
+        });
+      }
     } else if (tile.type === "list") {
       // Cycle through textValues on click (shift-click = previous)
       el.addEventListener("click", (ev) => {
