@@ -8,14 +8,14 @@ Curated inventory of Lua widgets, frameworks, presets, and integrations that exi
 
 | Project | Author | License | Notes |
 |---|---|---|---|
-| [martinpavlas/electra.lua](https://github.com/martinpavlas/electra.lua) | Martin Pavlas (Electra One founder) | none specified | Reference framework: `component.lua`, `lcd_touch.lua`, `component_touch.lua`, `pot_touch.lua`, `buttons.lua`, `pots.lua`, MIDI I/O helpers, boilerplate |
+| [martinpavlas/electra.lua](https://github.com/martinpavlas/electra.lua) | Martin Pavlas (Electra One founder) | none specified | Reference framework — **[imported to `examples/` →](examples/)** · `component`, `lcd_touch`, `component_touch`, `pot_touch`, `buttons`, `pots`, MIDI I/O helpers, boilerplate |
 | [shankararunachalam/electra.lua](https://github.com/shankararunachalam/electra.lua) | shankar | none specified | Fork of above + `sequencer/` (Ephemera proof-of-concept, 16-step) |
 
 ## Widgets / custom controls (forum-shared)
 
 | Widget | Author | Source | Notes |
 |---|---|---|---|
-| Ephemera 16-step sequencer | shankar | [forum](https://forum.electra.one/t/ephemera-sequencer-for-electra-one-standalone-lua-firmware/715) · [code](https://github.com/shankararunachalam/electra.lua/tree/main/sequencer) | Standalone Lua firmware, buttons/knobs/touch/timer/MIDI |
+| Ephemera 16-step sequencer | shankar | [forum](https://forum.electra.one/t/ephemera-sequencer-for-electra-one-standalone-lua-firmware/715) · [code](https://github.com/shankararunachalam/electra.lua/tree/main/sequencer) · **[imported →](widgets/ephemera-sequencer/)** | Standalone Lua firmware, buttons/knobs/touch/timer/MIDI |
 | Multi-stage envelopes (DAHDSR / ADBSSR / DALDSDSR) | oldgearguy, NewIgnis | [forum](https://forum.electra.one/t/custom-control-for-envelopes-anyone/4169) | Graphics + touch, faders as data backing |
 | XT Envelopes demo | (community) | [preset](https://app.electra.one/preset/GK6wmbgvwM6S3GanpoN7) | |
 | NewIgnis envelope template | NewIgnis | [preset](https://app.electra.one/preset/HbynnPgMY6ei48yqOlrw) | |

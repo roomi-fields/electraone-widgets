@@ -23,9 +23,13 @@ main {
   display: flex; flex-direction: column;
 }
 .card:hover { transform: translateY(-2px); border-color: #3a3a55; }
-.card img {
+.card img, .card .noimg {
   width: 100%; aspect-ratio: 16/10; object-fit: cover;
   border-radius: 8px; background: #0a0a0d; margin-bottom: .8rem;
+}
+.card .noimg {
+  display: flex; align-items: center; justify-content: center;
+  color: #555; font-size: .85rem; letter-spacing: .1em; text-transform: uppercase;
 }
 .card h2 { margin: 0 0 .3rem; font-size: 1.1rem; }
 .card p { margin: 0; color: #a0a0b0; font-size: .9rem; }

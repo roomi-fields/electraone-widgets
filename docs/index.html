@@ -22,8 +22,11 @@ fetch("widgets.json").then(r => r.json()).then(ws => {
     const card = document.createElement("a");
     card.className = "card";
     card.href = `https://github.com/roomi-fields/electraone-widgets/tree/main/widgets/${w.slug}`;
+    const img = w.previewExt
+      ? `<img src="previews/${w.slug}.${w.previewExt}" alt="${w.name}">`
+      : `<div class="noimg">no preview yet</div>`;
     card.innerHTML = `
-      <img src="previews/${w.slug}.png" alt="${w.name}" onerror="this.style.display='none'">
+      ${img}
       <h2>${w.name}</h2>
       <p>${w.description}</p>`;
     grid.appendChild(card);

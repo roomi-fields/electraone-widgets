@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Scan widgets/* folders, extract name + first-line description from README.md,
-// copy preview.png to docs/previews/, and emit docs/widgets.json.
+// copy preview.{png,jpg,jpeg,webp} to docs/previews/, and emit docs/widgets.json.
 
 const fs = require("fs");
 const path = require("path");
@@ -9,6 +9,7 @@ const ROOT = path.resolve(__dirname, "..");
 const WIDGETS = path.join(ROOT, "widgets");
 const DOCS = path.join(ROOT, "docs");
 const PREVIEWS = path.join(DOCS, "previews");
+const EXTS = ["png", "jpg", "jpeg", "webp"];
 
 fs.mkdirSync(PREVIEWS, { recursive: true });
 
@@ -23,14 +24,24 @@ const entries = fs.readdirSync(WIDGETS, { withFileTypes: true })
       const lines = fs.readFileSync(readme, "utf8").split("\n");
       const h1 = lines.find(l => l.startsWith("# "));
       if (h1) name = h1.slice(2).trim();
-      const firstPara = lines.find(l => l.trim() && !l.startsWith("#") && !l.startsWith("!"));
+      const firstPara = lines.find(l =>
+        l.trim() &&
+        !l.startsWith("#") &&
+        !l.startsWith(">") &&
+        !l.startsWith("!") &&
+        !l.startsWith("-"));
       if (firstPara) description = firstPara.trim();
     }
-    const preview = path.join(dir, "preview.png");
-    if (fs.existsSync(preview)) {
-      fs.copyFileSync(preview, path.join(PREVIEWS, `${slug}.png`));
+    let previewExt = null;
+    for (const ext of EXTS) {
+      const p = path.join(dir, `preview.${ext}`);
+      if (fs.existsSync(p)) {
+        fs.copyFileSync(p, path.join(PREVIEWS, `${slug}.${ext}`));
+        previewExt = ext;
+        break;
+      }
     }
-    return { slug, name, description };
+    return { slug, name, description, previewExt };
   });
 
 fs.writeFileSync(
@@ -38,3 +49,4 @@ fs.writeFileSync(
   JSON.stringify(entries, null, 2) + "\n"
 );
 console.log(`Indexed ${entries.length} widget(s).`);
+entries.forEach(e => console.log(`  - ${e.slug}${e.previewExt ? ` (preview.${e.previewExt})` : " (no preview)"}`));
