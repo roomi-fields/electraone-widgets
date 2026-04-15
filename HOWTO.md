@@ -110,7 +110,16 @@ through the UI (any name — you'll overwrite its `project` field via the API).
 - Backend: **Firebase** project `electra-one-716c4`.
 - Presets live in **Firestore**, collection `projects`, doc id = the preset ID in the URL `app.electra.one/preset/<id>`.
 - Preview SVGs live in **Firebase Storage**, bucket `electra-one-716c4.appspot.com`, path `previews/<id>-<pageNum>.svg` (regenerated server-side when you save in the editor).
-- Firebase Web API key (public, from Nuxt bundle): `$FIREBASE_API_KEY`
+- Firebase Web API key: **do not commit it here**. Extract it from a fresh copy of the Nuxt bundle each time:
+
+  ```bash
+  for js in $(curl -s https://app.electra.one/presets/ | grep -oE '/_nuxt/[a-z0-9]+\.js' | sort -u); do
+    curl -s "https://app.electra.one$js" | grep -oE 'AIza[0-9A-Za-z_-]{35}'
+  done | sort -u | head -1
+  # export FIREBASE_API_KEY=<the value>
+  ```
+
+  The key is technically public (it's in every user's browser tab), but GitHub secret scanning and Firebase auto-revocation react to it being committed. Keep it in your shell env, not in files.
 
 ### Step 1 — get an auth token
 
