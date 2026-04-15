@@ -1,0 +1,27 @@
+{
+  "name": "electraone-widgets",
+  "version": "1.0.0",
+  "description": "A community library of custom Lua widgets for the [Electra One](https://electra.one) MIDI controller (MK2 / Mini).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roomi-fields/electraone-widgets.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/roomi-fields/electraone-widgets/issues"
+  },
+  "homepage": "https://github.com/roomi-fields/electraone-widgets#readme",
+  "devDependencies": {
+    "playwright": "^1.59.1"
+  }
+}

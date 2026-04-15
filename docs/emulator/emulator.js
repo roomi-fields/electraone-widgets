@@ -789,6 +789,7 @@ async function loadWidget(slug) {
 
   const canvas = document.getElementById("canvas");
   const stage = new Stage(canvas);
+  window.__stage = stage;
   window.__currentStage = stage;
   stage.tileValues = {};  // ref → 0..127 current value
   stage.nativeTiles = []; // {type, bounds, ref, name}
