@@ -1,20 +1,64 @@
 {
-  "version": 2,
-  "name": "XYPad Demo",
-  "projectId": "xypad-demo",
-  "pages": [{ "id": 1, "name": "XY" }],
-  "groups": [],
-  "devices": [{ "id": 1, "name": "Target", "port": 1, "channel": 1 }],
-  "overlays": [],
-  "controls": [
+  "schemaVersion": 3,
+  "targetDevice": "mk2",
+  "id": "xypad-widget",
+  "name": "XY Pad",
+  "description": "Two-axis touch pad sending 2 virtual parameters",
+  "lua": "-- Widget: XY Pad\n-- Description: 2-axis touch pad that sends two virtual parameters (wire to any MIDI in the preset).\n-- Author: electraone-widgets\n-- License: MIT\n\n-- State (normalized 0..1, origin bottom-left)\nlocal X = 0.5\nlocal Y = 0.5\n\n-- Colors\nlocal BG   = 0x202020  -- background\nlocal GRID = 0x404040  -- crosshair lines\nlocal DOT  = 0xFFFFFF  -- cursor\n\n-- Virtual parameter numbers this widget writes to (wire your MIDI mapping via parameterMap)\nlocal PARAM_X = 1\nlocal PARAM_Y = 2\nlocal DEVICE_ID = 1\n\nlocal function emit()\n  parameterMap.set(DEVICE_ID, PT_VIRTUAL, PARAM_X, math.floor(X * 127))\n  parameterMap.set(DEVICE_ID, PT_VIRTUAL, PARAM_Y, math.floor(Y * 127))\nend\n\nfunction paintXY(control, value)\n  local b = control:getBounds()\n  local w = b[WIDTH]\n  local h = b[HEIGHT]\n\n  graphics.setColor(BG)\n  graphics.fillRect(0, 0, w, h)\n\n  graphics.setColor(GRID)\n  local mx = math.floor(w / 2)\n  local my = math.floor(h / 2)\n  graphics.drawLine(mx, 0, mx, h)\n  graphics.drawLine(0, my, w, my)\n\n  graphics.setColor(DOT)\n  local cx = math.floor(X * w)\n  local cy = math.floor((1 - Y) * h)\n  graphics.fillCircle(cx, cy, 14)\nend\n\nfunction touchXY(control, event)\n  if event.type == MOVE or event.type == DOWN then\n    local b = control:getBounds()\n    X = math.max(0, math.min(1, event.x / b[WIDTH]))\n    Y = math.max(0, math.min(1, 1 - event.y / b[HEIGHT]))\n    emit()\n    control:repaint()\n  end\nend\n\nfunction preset.onLoad()\n  local c = controls.get(1)\n  c:setBounds({0, 0, 1016, 560})\n  c:setPaintCallback(paintXY)\n  c:setTouchCallback(touchXY)\n  emit()\nend\n",
+  "devices": [
     {
       "id": 1,
-      "name": "XY",
-      "type": "pad",
-      "pageId": 1,
-      "controlSetId": 1,
-      "bounds": [0, 0, 1016, 560],
-      "mode": "toggle"
+      "name": "Target",
+      "instrumentId": "generic-controls",
+      "port": 1,
+      "channel": 1
     }
-  ]
+  ],
+  "tiles": [
+    {
+      "id": "xy-tile-1",
+      "reference": 1,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "XY",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1
+          }
+        }
+      ],
+      "visible": true
+    }
+  ],
+  "categories": [],
+  "layouts": [
+    {
+      "id": "mk2-6x6",
+      "targetDevice": "mk2",
+      "name": "Electra One Mk2 6x6",
+      "slots": [
+        {
+          "id": 0,
+          "tile": {
+            "id": "ref-xy-0",
+            "slotId": 0,
+            "type": "ref",
+            "tileId": "xy-tile-1"
+          }
+        }
+      ],
+      "pages": {
+        "1": {
+          "id": "1",
+          "name": "Page 1"
+        }
+      }
+    }
+  ],
+  "firstPageId": 1
 }
