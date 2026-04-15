@@ -216,10 +216,10 @@
       <circle cx="876" cy="286" r="9" fill="#B0B0C0"/>
       <circle cx="992" cy="326" r="9" fill="#B0B0C0"/>
       <!-- T/L labels -->
-      <g font-family="'Open Sans',Arial,sans-serif" font-size="9" fill="#FF0000">
+      <g font-family="'Open Sans', sans-serif" font-size="8" fill="#FF0000">
         <text x="110" y="12">T1: 127</text><text x="110" y="23">L1: 20</text>
       </g>
-      <g font-family="'Open Sans',Arial,sans-serif" font-size="9" fill="#B0B0C0">
+      <g font-family="'Open Sans', sans-serif" font-size="8" fill="#B0B0C0">
         <text x="220" y="12">T2: 127</text><text x="220" y="23">L2: 20</text>
         <text x="330" y="12">T3: 127</text><text x="330" y="23">L3: 20</text>
         <text x="440" y="12">T4: 127</text><text x="440" y="23">L4: 20</text>
