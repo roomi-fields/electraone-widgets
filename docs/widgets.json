@@ -12,6 +12,24 @@
     "previewExt": "svg"
   },
   {
+    "slug": "lua-lfo",
+    "name": "Lua LFO",
+    "description": "A free-running LFO implemented entirely in Lua on the Electra One, driven by the built-in 20 ms `timer.onTick()`. Modulates any CC on the target device with a selectable shape and depth, and supports **note-on phase reset** with a variable seed.",
+    "previewExt": null
+  },
+  {
+    "slug": "modwheel-at-router",
+    "name": "Modwheel & Aftertouch Router",
+    "description": "Takes two incoming MIDI performance signals — the **mod wheel** (CC 1) and **channel aftertouch** — and routes each onto any CC destination on the synth, with a **percentage-depth multiplier** controllable from the preset UI.",
+    "previewExt": null
+  },
+  {
+    "slug": "resonance-compensation",
+    "name": "Resonance Compensation",
+    "description": "On ladder-filter synths (Moog Minitaur, Sub 37, Voyager, and clones), pushing resonance up drains bass and perceived volume. This widget **auto-boosts volume (CC 7) by 70% of the current resonance value**, restoring perceived loudness.",
+    "previewExt": null
+  },
+  {
     "slug": "xt-envelopes",
     "name": "XT Envelopes — Custom envelope editor",
     "description": "A custom control that demonstrates the `paint` / `touch` / `pot` callback system on the Electra One MK2. Implements two envelope modes (`WAVE` 8-point, `FREE` 4-point) with active-point editing, color-coded stages and touch dragging.",
