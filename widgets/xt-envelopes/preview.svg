@@ -60,9 +60,9 @@
             </clipPath>
         </defs>
         <g style="clip-path: url(&quot;#clip-3075&quot;);">
-            <rect x="203" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
-            <rect x="203" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
-            <text x="266" y="408" text-anchor="middle" fill="#ffffff" class="value">
+            <rect x="203" y="416" width="126" fill="#0000FF" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="203" y="416" width="94" fill="#0000FF" rx="2" ry="2" height="8"/>
+            <text x="266" y="408" text-anchor="middle" fill="#0000FF" class="value">
                 1 - 8
             </text>
             <text x="266" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
@@ -77,9 +77,9 @@
             </clipPath>
         </defs>
         <g style="clip-path: url(&quot;#clip-3076&quot;);">
-            <rect x="370" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
-            <rect x="370" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
-            <text x="433" y="408" text-anchor="middle" fill="#ffffff" class="value">
+            <rect x="370" y="416" width="126" fill="#0000FF" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="370" y="416" width="94" fill="#0000FF" rx="2" ry="2" height="8"/>
+            <text x="433" y="408" text-anchor="middle" fill="#0000FF" class="value">
                 1 - 8
             </text>
             <text x="433" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
@@ -94,9 +94,9 @@
             </clipPath>
         </defs>
         <g style="clip-path: url(&quot;#clip-3077&quot;);">
-            <rect x="704" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
-            <rect x="704" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
-            <text x="767" y="408" text-anchor="middle" fill="#ffffff" class="value">
+            <rect x="704" y="416" width="126" fill="#00FF00" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="704" y="416" width="94" fill="#00FF00" rx="2" ry="2" height="8"/>
+            <text x="767" y="408" text-anchor="middle" fill="#00FF00" class="value">
                 1 - 8
             </text>
             <text x="767" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
@@ -111,9 +111,9 @@
             </clipPath>
         </defs>
         <g style="clip-path: url(&quot;#clip-3078&quot;);">
-            <rect x="871" y="416" width="126" fill="#ffffff" rx="2" ry="2" height="8" fill-opacity="0.2"/>
-            <rect x="871" y="416" width="94" fill="#ffffff" rx="2" ry="2" height="8"/>
-            <text x="934" y="408" text-anchor="middle" fill="#ffffff" class="value">
+            <rect x="871" y="416" width="126" fill="#00FF00" rx="2" ry="2" height="8" fill-opacity="0.2"/>
+            <rect x="871" y="416" width="94" fill="#00FF00" rx="2" ry="2" height="8"/>
+            <text x="934" y="408" text-anchor="middle" fill="#00FF00" class="value">
                 1 - 8
             </text>
             <text x="934" y="440" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name">
@@ -173,15 +173,15 @@
         </g>
     </g>
     <g type="pad" mode="toggle" visible="visible" bounds="20,388,146,56" pageId="1">
-        <rect x="36" y="393" width="126" height="45" fill="#ffffff" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
-        <rect x="36" y="393" width="126" height="48" fill="#ffffff" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
+        <rect x="36" y="393" width="126" height="45" fill="#0000FF" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
+        <rect x="36" y="393" width="126" height="48" fill="#0000FF" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
         <text x="99" y="418" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
             KEY ON LOOP
         </text>
     </g>
     <g type="pad" mode="toggle" visible="visible" bounds="521,388,146,56" pageId="1">
-        <rect x="537" y="393" width="126" height="45" fill="#ffffff" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
-        <rect x="537" y="393" width="126" height="48" fill="#ffffff" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
+        <rect x="537" y="393" width="126" height="45" fill="#00FF00" rx="4" ry="4" fill-opacity="0.2" style="z-index: 1;"/>
+        <rect x="537" y="393" width="126" height="48" fill="#00FF00" rx="4" ry="4" fill-opacity="0.3" style="z-index: 2;"/>
         <text x="600" y="418" text-anchor="middle" alignment-baseline="middle" fill="#fff" class="name-small">
             KEY OFF LOOP
         </text>
