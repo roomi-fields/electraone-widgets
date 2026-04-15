@@ -4,7 +4,8 @@
 const RAW_BASE = "https://raw.githubusercontent.com/roomi-fields/electraone-widgets/main";
 
 const CONST = {
-  WIDTH: 2, HEIGHT: 3,
+  // Electra convention: bounds is a 1-based Lua array {1:x, 2:y, 3:w, 4:h}
+  WIDTH: 3, HEIGHT: 4, X: 1, Y: 2,
   LEFT: 0, RIGHT: 1, CENTER: 2,
   DOWN: 1, MOVE: 2, UP: 3, CLICK: 4, LONG_HOLD: 5, HOLD: 6,
   PT_CC7: 1, PT_VIRTUAL: 2, PT_NRPN: 3, PT_RPN: 4,
@@ -63,16 +64,19 @@ class Control {
     this.value = 0;
   }
   getBounds() {
+    // Lua 1-based: bounds[1]=x, [2]=y, [3]=w, [4]=h
     const [x, y, w, h] = this.bounds;
-    return { 0: x, 1: y, 2: w, 3: h, x, y, width: w, height: h };
+    return { 1: x, 2: y, 3: w, 4: h, x, y, width: w, height: h };
   }
   setBounds(b) {
-    // accept Lua-array {1:x,2:y,3:w,4:h} or JS-array {0:x,1:y,2:w,3:h} or object
-    const x = b[0] ?? b[1] ?? b.x ?? this.bounds[0];
-    const y = b[1] ?? b[2] ?? b.y ?? this.bounds[1];
-    const w = b[2] ?? b[3] ?? b.width ?? this.bounds[2];
-    const h = b[3] ?? b[4] ?? b.height ?? this.bounds[3];
-    this.bounds = [x, y, w, h];
+    // Accept Lua 1-based {1,2,3,4}, or object {x,y,width,height}
+    let x, y, w, h;
+    if (b[1] !== undefined || b[3] !== undefined) {
+      x = b[1]; y = b[2]; w = b[3]; h = b[4];
+    } else {
+      x = b.x; y = b.y; w = b.width; h = b.height;
+    }
+    this.bounds = [x ?? this.bounds[0], y ?? this.bounds[1], w ?? this.bounds[2], h ?? this.bounds[3]];
   }
   setPaintCallback(fn) { this.stage.paintCbs[this.id] = fn; }
   setTouchCallback(fn) { this.stage.touchCbs[this.id] = fn; }
@@ -124,11 +128,17 @@ function wrapFn(fn) {
 }
 
 function pushObject(L, obj) {
-  // Plain map/module as Lua table
+  // Plain map/module as Lua table. Numeric-looking keys get integer indexing
+  // so Lua can do `t[2]` and not `t["2"]`.
   lua.lua_createtable(L, 0, Object.keys(obj).length);
   for (const [k, v] of Object.entries(obj)) {
     pushValue(L, v);
-    lua.lua_setfield(L, -2, to_luastring(k));
+    const num = Number(k);
+    if (Number.isInteger(num) && num >= 0 && String(num) === k) {
+      lua.lua_seti(L, -2, num);
+    } else {
+      lua.lua_setfield(L, -2, to_luastring(k));
+    }
   }
 }
 
