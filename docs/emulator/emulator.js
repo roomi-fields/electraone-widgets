@@ -341,6 +341,10 @@ function luaToJS(L, i) {
   if (t === lua.LUA_TBOOLEAN)  return Boolean(lua.lua_toboolean(L, i));
   if (t === lua.LUA_TNIL)      return null;
   if (t === lua.LUA_TFUNCTION) {
+    // luaL_ref pops the top of the stack — not position `i`. Push a copy so
+    // the reffed value is the function at index i (other args on the stack
+    // stay intact for the caller's loop over positional params).
+    lua.lua_pushvalue(L, i);
     const ref = lauxlib.luaL_ref(L, lua.LUA_REGISTRYINDEX);
     return function (...args) {
       lua.lua_rawgeti(L, lua.LUA_REGISTRYINDEX, ref);
@@ -597,7 +601,6 @@ function fireParameterChange(stage, tile, midiValue) {
       lua.lua_pop(L, 1);
     }
   }
-  lua.lua_pop(L, 1);
 }
 
 function createNativeTileOverlays(stage) {
@@ -655,7 +658,9 @@ function createNativeTileOverlays(stage) {
         const dx = ev.clientX - startX;
         const sensitivity = 1.5;
         let v = startVal + Math.round(dx / sensitivity);
-        v = Math.max(0, Math.min(127, v));
+        const lo = tile.msgMin ?? 0;
+        const hi = tile.msgMax ?? 127;
+        v = Math.max(lo, Math.min(hi, v));
         if (v !== stage.tileValues[tile.ref]) {
           stage.tileValues[tile.ref] = v;
           updateTileVisual(tile, v);
@@ -720,7 +725,10 @@ function updateTileVisual(tile, value) {
   if (!tile.valueEl) return;
   if (tile.type === "fader") {
     const maxW = parseFloat(tile.valueEl.dataset.maxW || tile.valueEl.getAttribute("width") || 0);
-    tile.valueEl.setAttribute("width", (maxW * value / 127).toFixed(1));
+    const lo = tile.msgMin ?? 0;
+    const hi = tile.msgMax ?? 127;
+    const ratio = hi > lo ? (value - lo) / (hi - lo) : 0;
+    tile.valueEl.setAttribute("width", (maxW * Math.max(0, Math.min(1, ratio))).toFixed(1));
   } else if (tile.type === "pad") {
     tile.valueEl.setAttribute("fill-opacity", value ? "0.8" : "0.2");
   } else if (tile.type === "list") {
@@ -908,11 +916,12 @@ async function loadWidget(slug) {
   // Build interactive overlays for native tiles
   createNativeTileOverlays(stage);
 
-  // Initial sync: fire per-value callbacks for tiles with their default value,
-  // so widgets that route CCs (cube-lfo's xCcChanged/yCcChanged) align fader
-  // parameterNumbers with the list defaults before the first tick.
+  // Initial sync: fire per-value callbacks for LIST tiles only, so widgets
+  // that route CCs (cube-lfo's xCcChanged/yCcChanged) align fader parameter
+  // numbers with the list defaults. Firing fader callbacks at startup breaks
+  // widgets that assume interaction-primed state (e.g. xt-envelopes).
   for (const tile of stage.nativeTiles) {
-    if (tile.fnName) {
+    if (tile.fnName && tile.type === "list") {
       const v = stage.tileValues[tile.ref] ?? tile.defaultValue ?? 0;
       try { fireParameterChange(stage, tile, v); } catch (_) {}
     }
