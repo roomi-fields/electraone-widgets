@@ -550,6 +550,16 @@ function setupEnv(L, stage) {
   });
   lua.lua_setglobal(L, to_luastring("pipe"));
 
+  // events — subscribe/setPort stubs. Widgets call events.subscribe(...) at
+  // load time to opt into page-change / pot-touch hooks; we accept + ignore.
+  pushObject(L, {
+    subscribe: () => {},
+    setPort: () => {},
+    onPageChange: () => {},
+    onPotTouchChange: () => {},
+  });
+  lua.lua_setglobal(L, to_luastring("events"));
+
   // timer — provides actual tick loop so animated widgets run
   stage.timerState = { intervalId: null, periodMs: 20 };
   const doTick = () => {
@@ -763,9 +773,22 @@ function createNativeTileOverlays(stage) {
         const hi = tile.msgMax ?? 127;
         v = Math.max(lo, Math.min(hi, v));
         if (v !== stage.tileValues[tile.ref]) {
+          const prev = stage.tileValues[tile.ref];
           stage.tileValues[tile.ref] = v;
           updateTileVisual(tile, v);
           fireParameterChange(stage, tile, v);
+          // Also fire any registered pot callback (usually on the custom
+          // tile) with the drag delta — matches MK2 where rotating any pot
+          // invokes the active custom control's potCb. Needed for widgets
+          // like multi-env-encoders that only respond to pot deltas.
+          if (!tile.fnName && stage.potCbs) {
+            const potId = tile.slotId != null && tile.slotId > 60 ? tile.slotId - 60 : tile.ref;
+            for (const [cid, potCb] of Object.entries(stage.potCbs)) {
+              try {
+                potCb(stage.controls[cid], { id: potId, delta: v - (prev ?? 0), type: CONST.MOVE });
+              } catch (e) { logMsg("pot synthetic err: " + e.message, "err"); }
+            }
+          }
         }
       });
       el.addEventListener("pointerup", () => { dragging = false; });
@@ -1038,6 +1061,7 @@ async function loadWidget(slug) {
         st.ref = pt.reference;
         st.name = pt.name;
         st.mode = pt.mode;
+        st.slotId = pt.slotId;
         // First value's message — type + parameterNumber are what the Lua compares
         const msg = pt.values && pt.values[0] && pt.values[0].message;
         if (msg) {
