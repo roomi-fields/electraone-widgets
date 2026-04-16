@@ -490,6 +490,21 @@ function setupEnv(L, stage) {
     return 1;
   });
   lua.lua_setfield(L, -2, to_luastring("get"));
+
+  // controls.getValue(controlName) — widgets can look up the current value
+  // of a control by the preset-defined tile name (e.g. "bRun").
+  lua.lua_pushjsfunction(L, (L) => {
+    const name = to_jsstring(lua.lua_tostring(L, 1));
+    const tile = (stage.nativeTiles || []).find(t => t.fnName === name || t.name === name);
+    // Return nil (not 0) when no matching tile — widgets commonly write
+    // `controls.getValue(x) or default` and 0 is truthy in Lua, so a 0
+    // stub would suppress the default and break numerical logic.
+    if (!tile) { lua.lua_pushnil(L); return 1; }
+    lua.lua_pushnumber(L, stage.tileValues[tile.ref] ?? tile.msgOff ?? 0);
+    return 1;
+  });
+  lua.lua_setfield(L, -2, to_luastring("getValue"));
+
   lua.lua_setglobal(L, to_luastring("controls"));
 
   // devices
@@ -747,9 +762,10 @@ function createNativeTileOverlays(stage) {
       el.addEventListener("pointerup", () => { dragging = false; });
     } else if (tile.type === "pad") {
       if (tile.mode === "momentary") {
-        // Fire on value on press, off value on release — matches the MK2
-        // behaviour where a tap triggers one pulse.
-        const onV = tile.msgOn ?? 127, offV = tile.msgOff ?? 0;
+        // Fire on value on press, off value on release. Empirically MK2 fires
+        // the value as 1/0 for momentary pads regardless of the message's
+        // on/off values, so widgets tend to test `v == 1`.
+        const onV = 1, offV = 0;
         el.addEventListener("pointerdown", (ev) => {
           ev.preventDefault();
           stage.tileValues[tile.ref] = onV;
@@ -766,8 +782,11 @@ function createNativeTileOverlays(stage) {
         el.addEventListener("pointerup", release);
         el.addEventListener("pointerleave", release);
       } else {
+        // toggle: flip between message's on/off values (not hardcoded 0/127 —
+        // widgets may expect 1/0 or other values).
+        const onV = tile.msgOn ?? 127, offV = tile.msgOff ?? 0;
         el.addEventListener("click", () => {
-          const v = stage.tileValues[tile.ref] ? 0 : 127;
+          const v = stage.tileValues[tile.ref] === onV ? offV : onV;
           stage.tileValues[tile.ref] = v;
           updateTileVisual(tile, v);
           fireParameterChange(stage, tile, v);
@@ -974,23 +993,38 @@ async function loadWidget(slug) {
       const [x, y, w, h] = g.getAttribute("bounds").split(",").map(Number);
       const type = g.getAttribute("type");
       const variant = g.getAttribute("variant") || null;  // "dial", "fader", etc.
-      tiles.push({ type, variant, bounds: [x, y, w, h], el: g });
+      const layoutId = g.getAttribute("layoutId") || g.getAttribute("layoutid") || null;
+      const key = g.getAttribute("_key");
+      const keyIdx = key != null ? parseInt(key, 10) : null;
+      tiles.push({ type, variant, layoutId, keyIdx, bounds: [x, y, w, h], el: g });
     });
 
-    // Match SVG tiles to preset tiles. For each SVG tile, consume the next
-    // unused preset tile of the same type (the preset may interleave types
-    // differently from the SVG, so a single linear cursor doesn't work).
+    // Match SVG tiles to preset tiles. v3 presets carry a `layouts` array with
+    // slots that reference tile UUIDs — the SVG's _key attribute indexes into
+    // that slot list. Use that mapping when available; otherwise fall back to
+    // type-sequential matching (v2 presets or anything else).
     if (preset && preset.tiles) {
       const TYPE_MAP = { cc7: CONST.PT_CC7, virtual: CONST.PT_VIRTUAL, nrpn: CONST.PT_NRPN, rpn: CONST.PT_RPN };
+      const tilesById = new Map((preset.tiles || []).map(t => [t.id, t]));
       const used = new Set();
       for (const st of tiles) {
         let pt = null;
-        for (let k = 0; k < preset.tiles.length; k++) {
-          if (used.has(k)) continue;
-          if (preset.tiles[k].type !== st.type) continue;
-          pt = preset.tiles[k];
-          used.add(k);
-          break;
+        // Preferred path: layout + _key
+        if (st.layoutId && st.keyIdx != null && preset.layouts) {
+          const L = preset.layouts.find(l => l.id === st.layoutId);
+          const slot = L && L.slots && L.slots[st.keyIdx];
+          const tileId = slot && slot.tile && (slot.tile.tileId || slot.tile.id);
+          if (tileId) pt = tilesById.get(tileId) || null;
+        }
+        // Fallback: sequential by type (v2 presets, or _key mismatch)
+        if (!pt) {
+          for (let k = 0; k < preset.tiles.length; k++) {
+            if (used.has(k)) continue;
+            if (preset.tiles[k].type !== st.type) continue;
+            pt = preset.tiles[k];
+            used.add(k);
+            break;
+          }
         }
         if (!pt) continue;
         st.ref = pt.reference;
@@ -1009,6 +1043,17 @@ async function loadWidget(slug) {
         const vo = pt.values && pt.values[0];
         // Per-value Lua callback name (e.g. "xCcChanged")
         if (vo && typeof vo.function === "string") st.fnName = vo.function;
+        // Seed the tile's current value from defaultValue so controls.getValue
+        // returns the expected default during preset.onLoad — before overlay
+        // creation would derive it from the SVG bar width. String defaults
+        // ("on" / "off") map to on/off values so widget code always sees
+        // a numeric value and `0 or default` quirks stay predictable.
+        if (vo && vo.defaultValue !== undefined && stage.tileValues[pt.reference] === undefined) {
+          const dv = vo.defaultValue;
+          if (typeof dv === "number") stage.tileValues[pt.reference] = dv;
+          else if (dv === "on")  stage.tileValues[pt.reference] = 1;  // matches momentary normalisation
+          else if (dv === "off") stage.tileValues[pt.reference] = 0;
+        }
         // For list tiles, update the displayed value text to match defaultValue's label
         if (st.type === "list" && vo && Array.isArray(vo.textValues)) {
           st.textValues = vo.textValues;
