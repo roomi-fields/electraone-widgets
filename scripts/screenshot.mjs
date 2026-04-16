@@ -17,10 +17,16 @@ mkdirSync(outDir, { recursive: true });
 const outPath = resolve(outDir, "preview.png");
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1060, height: 620 } });
+const context = await browser.newContext({ viewport: { width: 1060, height: 620 } });
+// Bypass HTTP cache so freshly-pushed widget.lua / lib files are fetched.
+await context.route("**/*", (route) => {
+  const headers = { ...route.request().headers(), "cache-control": "no-cache", "pragma": "no-cache" };
+  route.continue({ headers });
+});
+const page = await context.newPage();
 page.on("pageerror", (e) => console.error("page err:", e.message));
 
-await page.goto(`${baseUrl}?w=${slug}`, { waitUntil: "networkidle" });
+await page.goto(`${baseUrl}?w=${slug}&t=${Date.now()}`, { waitUntil: "networkidle" });
 // Give the Lua timer a beat so animations (cube-lfo) leave their t=0 pose.
 // cube-lfo needs angular speed > 0 to spin — drive virtual params 11/12 via a
 // synthetic onChange so the shot shows the cube mid-rotation.

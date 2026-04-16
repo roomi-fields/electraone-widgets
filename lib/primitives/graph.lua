@@ -9,7 +9,6 @@
 --     fill  = false,          -- if true, solid-fill area under the curve
 --     grid  = 0,              -- N horizontal divisions (default 0 = none)
 --     baseline = 0,           -- y-value of the baseline for fill (0..1)
---     markers = {0.2, 0.5},   -- vertical dividers at these normalised xs
 --   })
 -- `points` is an array of {x, y} pairs with each coord normalised 0..1.
 -- y=0 is the bottom of the rect, y=1 the top.
@@ -41,12 +40,15 @@ local function graph(x, y, w, h, points, opts)
     return x + p[1] * w, y + h - p[2] * h
   end
 
-  -- Optional solid fill under the curve — one fillRect per integer column.
+  -- Pre-compute screen-space points once (used by fill and trace).
+  local sp = {}
+  for i, p in ipairs(points) do sp[i] = { toScreen(p) } end
+
+  -- Solid uniform fill under the curve — one fillRect per integer column.
+  -- Integer coords avoid the sub-pixel "dégradé" artifact of drawLine stacking.
   if fill then
     graphics.setColor(color)
     local baseY = math.floor(y + h - baseline * h)
-    local sp = {}
-    for i, p in ipairs(points) do sp[i] = { toScreen(p) } end
     local minX = math.floor(sp[1][1])
     local maxX = math.floor(sp[#sp][1])
     local seg = 1
@@ -63,40 +65,16 @@ local function graph(x, y, w, h, points, opts)
     end
   end
 
-  -- Trace + marker colour — when the area is filled, draw contour in a
-  -- contrasting near-white so it reads on top of the accent fill.
+  -- Contour trace (2px thick). When area is filled, render in TEXT for
+  -- visible outline on top of the accent fill. The trace naturally traces
+  -- section transitions through the curve's angle changes — no extra markers.
   local traceColor = fill and Theme.TEXT or color
-
-  -- Optional section edges: vertical lines from the baseline up to the curve
-  -- at each marker position. Contour of each filled region, in traceColor.
-  if opts.markers then
-    graphics.setColor(traceColor)
-    local baseY = math.floor(y + h - baseline * h)
-    local sp = {}
-    for i, p in ipairs(points) do sp[i] = { toScreen(p) } end
-    for _, mx in ipairs(opts.markers) do
-      local px = x + mx * w
-      for i = 1, #sp - 1 do
-        if px >= sp[i][1] and px <= sp[i + 1][1] then
-          local dx = sp[i + 1][1] - sp[i][1]
-          local t = (dx == 0) and 0 or (px - sp[i][1]) / dx
-          local curveY = math.floor(sp[i][2] + (sp[i + 1][2] - sp[i][2]) * t)
-          local px_i = math.floor(px)
-          graphics.drawLine(px_i,     math.min(curveY, baseY), px_i,     math.max(curveY, baseY))
-          graphics.drawLine(px_i + 1, math.min(curveY, baseY), px_i + 1, math.max(curveY, baseY))
-          break
-        end
-      end
-    end
-  end
-
-  -- Trace (2px thick) — drawn last so it sits on top of everything
   graphics.setColor(traceColor)
-  for i = 1, #points - 1 do
-    local x0, y0 = toScreen(points[i])
-    local x1, y1 = toScreen(points[i + 1])
-    graphics.drawLine(x0,     y0,     x1,     y1)
-    graphics.drawLine(x0,     y0 + 1, x1,     y1 + 1)
+  for i = 1, #sp - 1 do
+    local x0, y0 = sp[i][1], sp[i][2]
+    local x1, y1 = sp[i + 1][1], sp[i + 1][2]
+    graphics.drawLine(x0, y0,     x1, y1)
+    graphics.drawLine(x0, y0 + 1, x1, y1 + 1)
   end
 end
 
