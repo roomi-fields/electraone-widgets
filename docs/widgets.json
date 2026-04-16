@@ -81,7 +81,7 @@
     "slug": "theme-gallery",
     "name": "Theme Gallery",
     "description": "Draws all Theme palette entries (neutrals + accents), the `Theme.card(…)` primitive, line weights, and typography samples in a single custom tile.",
-    "previewExt": null
+    "previewExt": "png"
   },
   {
     "slug": "xt-envelopes",
