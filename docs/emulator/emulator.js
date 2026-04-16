@@ -40,7 +40,19 @@ class Stage {
     this.potCbs = {};
     this.currentColor = 0xFFFFFF;
   }
-  hexColor(c) { return "#" + ("000000" + (c >>> 0).toString(16)).slice(-6); }
+  // MK2 graphics API uses RGB565 (16-bit, r5 g6 b5). Expand each channel to
+  // 8-bit by left-shifting and folding the high bits back in — matches how
+  // the firmware drives its 24-bit framebuffer.
+  hexColor(c) {
+    const v = (c >>> 0) & 0xFFFF;
+    const r5 = (v >> 11) & 0x1F;
+    const g6 = (v >> 5)  & 0x3F;
+    const b5 = v         & 0x1F;
+    const r8 = (r5 << 3) | (r5 >> 2);
+    const g8 = (g6 << 2) | (g6 >> 4);
+    const b8 = (b5 << 3) | (b5 >> 2);
+    return "#" + [r8, g8, b8].map(n => n.toString(16).padStart(2, "0")).join("");
+  }
   paintAll() {
     this.ctx.clearRect(0, 0, STAGE_W, STAGE_H);
     for (const id of Object.keys(this.paintCbs)) this.paintOne(id);
