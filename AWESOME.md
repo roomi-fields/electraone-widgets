@@ -15,13 +15,13 @@ Curated inventory of Lua widgets, frameworks, presets, and integrations that exi
 
 | Widget | Author | Source | Notes |
 |---|---|---|---|
-| Ephemera 16-step sequencer | shankar | [forum](https://forum.electra.one/t/ephemera-sequencer-for-electra-one-standalone-lua-firmware/715) · [code](https://github.com/shankararunachalam/electra.lua/tree/main/sequencer) · **[imported →](widgets/ephemera-sequencer/)** | Standalone Lua firmware, buttons/knobs/touch/timer/MIDI |
+| Ephemera 16-step sequencer | shankar | [forum](https://forum.electra.one/t/ephemera-sequencer-for-electra-one-standalone-lua-firmware/715) · [code](https://github.com/shankararunachalam/electra.lua/tree/main/sequencer) | Standalone Lua firmware app (not a widget — out of scope) |
 | Multi-stage envelopes (DAHDSR / ADBSSR / DALDSDSR) | oldgearguy, NewIgnis | [forum](https://forum.electra.one/t/custom-control-for-envelopes-anyone/4169) | Graphics + touch, faders as data backing |
 | XT Envelopes (custom XY-pad / envelope editor) | Thomas Moravansky (Electra One co-founder) | [preset](https://app.electra.one/preset/GK6wmbgvwM6S3GanpoN7) · **[imported →](widgets/xt-envelopes/)** | 494-line custom-control demo with paint/touch/pot callbacks, firmware ≥3.6.0 |
 | EG Template (7-variant Envelope Generator) | NewIgnis | [preset](https://app.electra.one/preset/HbynnPgMY6ei48yqOlrw) · **[imported →](widgets/eg-template/)** | dynamic re-labeling of MK2 4-stage env tile into AD/AR/ADS/ADSR/AHDSR/DADSR/ADBSSR/ALDSDSR |
-| Modwheel / Aftertouch router | NewIgnis | [forum](https://forum.electra.one/t/making-additional-modulation-and-expression-with-lua/1778?page=1#post_10894) · **[imported →](widgets/modwheel-at-router/)** | MIDI CC1 + channel AT → any CC with depth % |
-| Resonance compensation | NewIgnis | [forum](https://forum.electra.one/t/making-additional-modulation-and-expression-with-lua/1778?page=1#post_10944) · **[imported →](widgets/resonance-compensation/)** | Ladder-filter volume boost from resonance |
-| Lua LFO (tri/sq/ramp) | NewIgnis | [forum](https://forum.electra.one/t/making-additional-modulation-and-expression-with-lua/1778?page=2#post_11012) · **[imported →](widgets/lua-lfo/)** | Timer-based 20ms tick, note-on phase reset |
+| Modwheel / Aftertouch router | NewIgnis | [forum](https://forum.electra.one/t/making-additional-modulation-and-expression-with-lua/1778?page=1#post_10894) | MIDI CC1 + channel AT → any CC with depth % (behavioral, copy from forum) |
+| Resonance compensation | NewIgnis | [forum](https://forum.electra.one/t/making-additional-modulation-and-expression-with-lua/1778?page=1#post_10944) | Ladder-filter volume boost from resonance (behavioral) |
+| Lua LFO (tri/sq/ramp) | NewIgnis | [forum](https://forum.electra.one/t/making-additional-modulation-and-expression-with-lua/1778?page=2#post_11012) | Timer-based 20ms tick, note-on phase reset (behavioral) |
 | VCVRack patch visualizer | topa | [forum](https://forum.electra.one/t/instrument-preset-for-vcvrack-remote-patch-control-using-an-electra-one-mk-ii/3510) | |
 | Elektron Analog Drive preset | (community) | [forum](https://forum.electra.one/t/elektron-analog-drive/3723) | Rich UI example |
 

@@ -1005,7 +1005,9 @@ async function loadWidget(slug) {
   } catch (e) { logMsg("no demo.preset.json: " + e.message, "info"); }
 
   try {
-    const svgText = await (await fetch(`../previews/${slug}.svg`)).text();
+    const svgResp = await fetch(`../previews/${slug}.svg`);
+    if (!svgResp.ok) throw new Error(`preview.svg ${svgResp.status}`);
+    const svgText = await svgResp.text();
     // Inline the SVG into the DOM so we can manipulate fader bars, pad fills etc.
     const svgLayer = document.getElementById("svg-layer");
     svgLayer.innerHTML = svgText;
