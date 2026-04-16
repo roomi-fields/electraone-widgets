@@ -10,15 +10,20 @@ A flat/modern replacement for the native `dx7envelope` tile. Renders a live ADSR
 
 | Ref | Name | Type | Mode | Range | paramNum | Function | Notes |
 |-----|------|------|------|-------|----------|----------|-------|
-| 1 | Envelope | custom | — | — | — | — | Fills the top 400 px of the page; hosts the curve. |
-| 2 | Attack  | fader | — | 0..127 | 1 | — | Default 19. |
-| 3 | Decay   | fader | — | 0..127 | 2 | — | Default 38. |
-| 4 | Sustain | fader | — | 0..127 | 3 | — | Default 83. |
-| 5 | Release | fader | — | 0..127 | 4 | — | Default 51. |
+| 1 | Envelope | custom | — | — | — | — | Fills the whole page. Everything is drawn with Theme primitives. |
+
+No native faders — input is handled by the custom tile's `touch` and `pot` callbacks.
 
 ## Virtual parameters used
 
-None — the widget reads CC7 parameters 1..4 directly. Remap to whatever your synth expects if different.
+The widget **writes** four virtuals, 0..127 each. Wire downstream synth CCs to these:
+
+| Param | Meaning |
+|---|---|
+| 1 | Attack |
+| 2 | Decay |
+| 3 | Sustain |
+| 4 | Release |
 
 ## Lua code
 
