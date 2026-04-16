@@ -1,8 +1,9 @@
--- electraone-widgets · Theme v0.2
+-- electraone-widgets · Theme v0.3
 -- Modern visual language for Electra One MK2 widgets.
--- Palette aligned with Electra One's own brand (their signature #D66448
--- terracotta) and 2026 design trends (warm neutrals, jewel-inspired
--- secondary accents, no neon).
+-- Classic pro-audio combination: cool slate neutrals (echoes the MK2's
+-- brushed aluminum anodised case) + warm amber-terracotta signature
+-- (echoes the Electra logo). Like SSL blue on gunmetal, or Teenage
+-- Engineering orange on grey.
 -- Copy this module to the top of your widget.lua to reuse it; the emulator
 -- pre-loads it automatically.
 
@@ -24,25 +25,28 @@ function Theme.hex(h)
 end
 
 -- ========== Palette — neutrals ==========
--- Warm-tilted dark hierarchy, not pure greys. Aligns with Electra's own
--- charcoals and the 2026 "elevated neutrals" trend (warm sand / taupe).
-Theme.CANVAS    = Theme.hex(0x0F0D0C)  -- page base, canvas outer
-Theme.SURFACE   = Theme.hex(0x1C1917)  -- card / tile surface
-Theme.ELEVATED  = Theme.hex(0x2B2622)  -- raised element / active card
-Theme.BORDER    = Theme.hex(0x3F3A35)  -- hairline divider, subtle outline
-Theme.TEXT_DIM  = Theme.hex(0xA39A90)  -- secondary text, labels, units
-Theme.TEXT      = Theme.hex(0xF0E9DF)  -- primary text (warm off-white)
+-- Cool slate hierarchy, blue-undertoned. Matches the MK2's brushed
+-- aluminum anodised enclosure so the screen feels continuous with the
+-- device edge.
+Theme.CANVAS    = Theme.hex(0x0A0D11)  -- page base, deep slate-black
+Theme.SURFACE   = Theme.hex(0x14181E)  -- card / tile, charcoal slate
+Theme.ELEVATED  = Theme.hex(0x232830)  -- raised / active, brushed steel
+Theme.BORDER    = Theme.hex(0x3A4048)  -- hairline, steel edge
+Theme.TEXT_DIM  = Theme.hex(0x9098A3)  -- secondary text, cool silver
+Theme.TEXT      = Theme.hex(0xE8EBF0)  -- primary text, cool off-white
 
 -- ========== Palette — accents ==========
--- Signature hero colour = Electra's own #D66448 terracotta.
--- Secondary accents pulled from their own UI bundle for continuity.
-Theme.ACCENT         = Theme.hex(0xD66448)  -- primary: active controls, modulation
-Theme.ACCENT_DIM     = Theme.hex(0xA64D36)  -- inactive / low-intensity variant
-Theme.WARNING        = Theme.hex(0xE8B04C)  -- warm gold: warn-zone, peak-hold
-Theme.ALERT          = Theme.hex(0xE54D42)  -- deep coral: over-threshold, critical
-Theme.POSITIVE       = Theme.hex(0x6A8E5C)  -- sage désaturé: in-range, confirmed
-Theme.INFO           = Theme.hex(0x4A7EA8)  -- muted sapphire (jewel): informational
-Theme.NEUTRAL_ACCENT = Theme.hex(0x8C7D6B)  -- warm taupe: disabled, sparkline
+-- Signature is warm-on-cold: amber-terracotta hero accent reads like a
+-- VU-meter needle or an OP-1 encoder knob against the cool slate chrome.
+-- Warning keeps the warm family; Positive / Info shift cold for balance
+-- and state-read clarity.
+Theme.ACCENT         = Theme.hex(0xE5823E)  -- primary: active, modulation
+Theme.ACCENT_DIM     = Theme.hex(0x8F5129)  -- deep copper: inactive variant
+Theme.WARNING        = Theme.hex(0xF5C64A)  -- vintage VU yellow: peak-hold
+Theme.ALERT          = Theme.hex(0xEB5757)  -- red: over-threshold, critical
+Theme.POSITIVE       = Theme.hex(0x7EC699)  -- cool sage: in-range, confirmed
+Theme.INFO           = Theme.hex(0x5B8FD4)  -- steel blue: informational
+Theme.NEUTRAL_ACCENT = Theme.hex(0x6B7384)  -- cool grey-blue: disabled
 
 -- ========== Drawing helpers ==========
 -- Thin wrappers around graphics.* so widget code stays declarative.

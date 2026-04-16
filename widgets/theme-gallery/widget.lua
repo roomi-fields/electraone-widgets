@@ -6,22 +6,22 @@ local c = controls.get(1)
 
 -- Palette rows
 local NEUTRALS = {
-  {"CANVAS",     Theme.CANVAS,     "0F0D0C", "page base"},
-  {"SURFACE",    Theme.SURFACE,    "1C1917", "card/tile"},
-  {"ELEVATED",   Theme.ELEVATED,   "2B2622", "raised"},
-  {"BORDER",     Theme.BORDER,     "3F3A35", "divider"},
-  {"TEXT_DIM",   Theme.TEXT_DIM,   "A39A90", "2nd text"},
-  {"TEXT",       Theme.TEXT,       "F0E9DF", "primary"},
+  {"CANVAS",     Theme.CANVAS,     "0A0D11", "page base"},
+  {"SURFACE",    Theme.SURFACE,    "14181E", "card/tile"},
+  {"ELEVATED",   Theme.ELEVATED,   "232830", "raised"},
+  {"BORDER",     Theme.BORDER,     "3A4048", "divider"},
+  {"TEXT_DIM",   Theme.TEXT_DIM,   "9098A3", "2nd text"},
+  {"TEXT",       Theme.TEXT,       "E8EBF0", "primary"},
 }
 
 local ACCENTS = {
-  {"ACCENT",         Theme.ACCENT,         "D66448", "modulation"},
-  {"ACCENT_DIM",     Theme.ACCENT_DIM,     "A64D36", "inactive"},
-  {"WARNING",        Theme.WARNING,        "E8B04C", "peak-hold"},
-  {"ALERT",          Theme.ALERT,          "E54D42", "over-thresh"},
-  {"POSITIVE",       Theme.POSITIVE,       "6A8E5C", "in-range"},
-  {"INFO",           Theme.INFO,           "4A7EA8", "info"},
-  {"NEUTRAL_ACCENT", Theme.NEUTRAL_ACCENT, "8C7D6B", "sparkline"},
+  {"ACCENT",         Theme.ACCENT,         "E5823E", "modulation"},
+  {"ACCENT_DIM",     Theme.ACCENT_DIM,     "8F5129", "inactive"},
+  {"WARNING",        Theme.WARNING,        "F5C64A", "peak-hold"},
+  {"ALERT",          Theme.ALERT,          "EB5757", "over-thresh"},
+  {"POSITIVE",       Theme.POSITIVE,       "7EC699", "in-range"},
+  {"INFO",           Theme.INFO,           "5B8FD4", "info"},
+  {"NEUTRAL_ACCENT", Theme.NEUTRAL_ACCENT, "6B7384", "sparkline"},
 }
 
 local function paintSwatchRow(startX, startY, items, cellW, cellH, gap)
@@ -45,8 +45,8 @@ function paintGallery(control)
   Theme.clear(W, H)
 
   -- Header
-  Theme.text(20, 14, "THEME v0.2 — electraone-widgets", Theme.TEXT)
-  Theme.text(20, 30, "Aligned with Electra One brand (signature #D66448) + 2026 trends", Theme.TEXT_DIM)
+  Theme.text(20, 14, "THEME v0.3 — electraone-widgets", Theme.TEXT)
+  Theme.text(20, 30, "Cool slate chrome (matches MK2 case) + warm amber accent (matches brand)", Theme.TEXT_DIM)
   Theme.line(20, 48, W - 20, 48, Theme.BORDER)
 
   -- Neutrals
