@@ -6,7 +6,13 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("[emulator] DOMContentLoaded. fengari =", typeof window.fengari);
 });
 
-const RAW_BASE = "https://raw.githubusercontent.com/roomi-fields/electraone-widgets/main";
+// Serve from the local working copy when running on localhost (requires
+// docs/lib and docs/widgets symlinks to ../lib and ../widgets). Online,
+// fetch from GitHub raw so users always hit main.
+const IS_LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
+const RAW_BASE = IS_LOCAL
+  ? ".."
+  : "https://raw.githubusercontent.com/roomi-fields/electraone-widgets/main";
 
 const CONST = {
   // Electra convention: bounds is a 1-based Lua array {1:x, 2:y, 3:w, 4:h}
