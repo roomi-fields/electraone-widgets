@@ -1,8 +1,26 @@
 -- Widget: Primitives Gallery
--- Dev reference — renders every primitive at various sizes, colours and
--- values so the primitive API can be QA'd visually.
+-- Dev reference — renders every primitive so the API can be QA'd visually.
 
 local c = controls.get(1)
+
+-- Sample envelope points for the graph showcase (AD → S → R curve)
+local ENV_POINTS = {
+  {0.00, 0.00}, {0.12, 1.00}, {0.30, 0.70}, {0.70, 0.70}, {1.00, 0.00}
+}
+
+-- Sample LFO shape (sine)
+local LFO_POINTS = {}
+for i = 0, 40 do
+  LFO_POINTS[#LFO_POINTS + 1] = { i / 40, 0.5 + 0.4 * math.sin(i / 40 * math.pi * 4) }
+end
+
+-- Sample step-sequencer cells (8 steps × 2 rows, velocity 0..1)
+local STEP_CELLS = {
+  -- row 1 (kick)
+  1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+  -- row 2 (hat)
+  0.3, 0.9, 0.3, 0.9, 0.3, 0.9, 0.3, 0.6,
+}
 
 function paintGallery(control)
   local b = control:getBounds()
@@ -10,98 +28,74 @@ function paintGallery(control)
 
   Theme.clear(W, H)
 
-  Theme.text(20, 10, "PRIMITIVES v0.2 — knob · bar · led · meter · slider", Theme.TEXT)
+  Theme.text(20, 10, "PRIMITIVES v0.3 — knob · bar · led · meter · slider · readout · graph · grid", Theme.TEXT)
   Theme.line(20, 28, W - 20, 28, Theme.BORDER)
 
   ------------------------------------------------------------------
-  -- Knob row — thicker rings + indicator (v0.2)
+  -- Row 1: knobs + sliders
   ------------------------------------------------------------------
-  Theme.text(20, 40, "KNOB — rotary, 270° sweep", Theme.TEXT_DIM)
-  Theme.knob( 20, 58, 70, 0.00, { label = "OFF" })
-  Theme.knob(110, 58, 70, 0.25, { label = "CUTOFF" })
-  Theme.knob(200, 58, 70, 0.50, { label = "RES", color = Theme.ALERT })
-  Theme.knob(290, 58, 70, 0.75, { label = "LFO", color = Theme.WARNING })
-  Theme.knob(380, 58, 70, 1.00, { label = "DRIVE" })
-  Theme.knob(470, 58, 70, 0.60, { label = "FBACK", color = Theme.POSITIVE })
-  Theme.knob(560, 58, 70, 0.40, { label = "SPREAD", color = Theme.INFO })
+  Theme.text(20, 40, "KNOB + SLIDER", Theme.TEXT_DIM)
+  Theme.knob( 20, 58, 70, 0.68, { label = "CUTOFF" })
+  Theme.knob(110, 58, 70, 0.42, { label = "RES",   color = Theme.ALERT })
+  Theme.knob(200, 58, 70, 0.30, { label = "DRIVE", color = Theme.WARNING })
+
+  Theme.slider(300, 58, 140, 28, 0.35, { label = "ATTACK", valueText = "12 ms", ticks = 20 })
+  Theme.slider(450, 58, 140, 28, 0.30, { label = "PAN",    valueText = "-20",   ticks = 10, bipolar = true, color = Theme.INFO })
+
+  Theme.slider(600,  58, 30, 110, 0.62, { orientation = "v", ticks = 20, color = Theme.ACCENT })
+  Theme.slider(640,  58, 30, 110, 0.45, { orientation = "v", ticks = 20, color = Theme.POSITIVE })
 
   ------------------------------------------------------------------
-  -- Slider row (h + bipolar + v)
+  -- Row 2: bars + meters + leds + readout
   ------------------------------------------------------------------
-  Theme.text(660, 40, "SLIDER — linear pot with handle", Theme.TEXT_DIM)
-  Theme.slider(660, 58, 160, 28, 0.30, { label = "ATTACK", valueText = "12 ms",  ticks = 20 })
-  Theme.slider(830, 58, 160, 28, 0.72, { label = "DECAY",  valueText = "180 ms", ticks = 20, color = Theme.WARNING })
-  Theme.slider(660, 94, 160, 28, 0.30, { label = "PAN L→R", valueText = "-20%", ticks = 10, bipolar = true, color = Theme.INFO })
-  Theme.slider(830, 94, 160, 28, 0.80, { label = "DETUNE",  valueText = "+12c", ticks = 10, bipolar = true, color = Theme.POSITIVE })
+  Theme.text(20, 190, "BAR + METER + LED + READOUT", Theme.TEXT_DIM)
+  Theme.bar( 20, 208, 150, 26, 0.30, { label = "INPUT",  valueText = "-12" })
+  Theme.bar(180, 208, 150, 26, 0.80, { label = "OUTPUT", valueText = "-3",  color = Theme.WARNING })
+
+  Theme.meter(340, 208, 180, 26, 0.95, { ticks = 20, label = "L", valueText = "+2 dB", peak = 0.97 })
+  Theme.meter(530, 208, 180, 26, 0.60, { ticks = 20, label = "R", valueText = "-6 dB" })
+
+  Theme.led(740, 220, true,  { label = "SYNC" })
+  Theme.led(820, 220, true,  { label = "REC",  color = Theme.ALERT })
+  Theme.led(910, 220, true,  { label = "CLIP", color = Theme.WARNING })
+
+  -- Readouts cluster
+  Theme.readout(720, 60, { label = "BPM",    value = "128",    unit = "",    color = Theme.ACCENT })
+  Theme.readout(820, 60, { label = "KEY",    value = "A♭ min", color = Theme.TEXT })
+  Theme.readout(720, 110, { label = "TIME",   value = "4/4",   color = Theme.TEXT_DIM })
+  Theme.readout(820, 110, { label = "OUTPUT", value = "-6.0",  unit = "dB", color = Theme.POSITIVE })
 
   ------------------------------------------------------------------
-  -- Bar row
+  -- Row 3: graph showcase
   ------------------------------------------------------------------
-  Theme.text(20, 170, "BAR — horizontal fill (0 → value)", Theme.TEXT_DIM)
-  Theme.bar( 20, 188, 180, 28, 0.30, { label = "INPUT",   valueText = "-12 dB" })
-  Theme.bar(220, 188, 180, 28, 0.80, { label = "OUTPUT",  valueText = "-3 dB",  color = Theme.WARNING })
-  Theme.bar(420, 188, 180, 28, 0.95, { label = "PEAK",    valueText = "+2 dB",  color = Theme.ALERT })
-  Theme.bar(620, 188, 180, 28, 0.55, { label = "HEADRM",  valueText = "OK",     color = Theme.POSITIVE })
+  Theme.text(20, 248, "GRAPH — envelope + LFO traces", Theme.TEXT_DIM)
+  Theme.graph( 20, 266, 240, 88, ENV_POINTS, { color = Theme.ACCENT, fill = true, grid = 4 })
+  Theme.text(260, 356, "ADSR", Theme.TEXT_DIM)
+
+  Theme.graph(320, 266, 340, 88, LFO_POINTS, { color = Theme.INFO, grid = 4 })
+  Theme.text(660, 356, "LFO sine × 4 cycles", Theme.TEXT_DIM)
 
   ------------------------------------------------------------------
-  -- Meter row (h + v)
+  -- Row 4: grid showcase (step seq)
   ------------------------------------------------------------------
-  Theme.text(20, 240, "METER — VU with graduation + zones", Theme.TEXT_DIM)
-  Theme.meter( 20, 258, 220, 32, 0.35, { label = "L",  valueText = "-14",           ticks = 8 })
-  Theme.meter(260, 258, 220, 32, 0.82, { label = "R",  valueText = "-1",  peak = 0.88, ticks = 8 })
-  Theme.meter(500, 258, 220, 32, 0.95, { label = "SUM",valueText = "+2",  peak = 0.97, ticks = 10 })
+  Theme.text(20, 380, "GRID — step sequencer (8 steps × 2 rows, active step 5)", Theme.TEXT_DIM)
+  Theme.grid(20, 398, 640, 60, 8, 2, STEP_CELLS, { active = 5 })
 
-  -- Vertical meters cluster
-  Theme.meter(760,  42, 22, 248, 0.65, { orientation = "v", ticks = 20, valueText = "L" })
-  Theme.meter(798,  42, 22, 248, 0.88, { orientation = "v", ticks = 20, valueText = "R", peak = 0.92 })
-  Theme.meter(836,  42, 22, 248, 0.30, { orientation = "v", ticks = 20, valueText = "C" })
-  Theme.meter(874,  42, 22, 248, 0.97, { orientation = "v", ticks = 20, valueText = "S", peak = 0.99 })
+  -- Right side: composition card using everything at once
+  Theme.text(690, 380, "COMPOSITION", Theme.TEXT_DIM)
+  Theme.card(690, 398, 310, 150)
+  Theme.text(702, 412, "TRACK 01", Theme.TEXT)
 
-  ------------------------------------------------------------------
-  -- LED row
-  ------------------------------------------------------------------
-  Theme.text(20, 310, "LED — status indicator", Theme.TEXT_DIM)
-  Theme.led( 40, 332, true,  { label = "SYNC" })
-  Theme.led(130, 332, false, { label = "MUTED" })
-  Theme.led(220, 332, true,  { label = "REC",     color = Theme.ALERT })
-  Theme.led(310, 332, true,  { label = "CLIP",    color = Theme.WARNING })
-  Theme.led(400, 332, true,  { label = "PLAYING", color = Theme.POSITIVE })
-  Theme.led(530, 332, true,  { label = "MIDI IN", color = Theme.INFO })
-  -- Size variants
-  Theme.led(660, 332, true, { size = 4 })
-  Theme.led(690, 332, true, { size = 8 })
-  Theme.led(730, 332, true, { size = 14 })
+  Theme.knob(700, 432, 60, 0.62, { label = "VOL" })
+  Theme.knob(770, 432, 60, 0.50, { label = "PAN", color = Theme.INFO })
+  Theme.meter(840, 430, 20, 94, 0.80, { orientation = "v", ticks = 20, peak = 0.86 })
+  Theme.meter(870, 430, 20, 94, 0.76, { orientation = "v", ticks = 20, peak = 0.82 })
 
-  ------------------------------------------------------------------
-  -- Composition sample
-  ------------------------------------------------------------------
-  Theme.text(20, 378, "COMPOSITION — sample filter + compressor section", Theme.TEXT_DIM)
-
-  -- Filter card
-  Theme.card(20, 398, 380, 150)
-  Theme.text(32, 412, "FILTER", Theme.TEXT)
-  Theme.knob( 40, 432, 70, 0.68, { label = "FREQ" })
-  Theme.knob(130, 432, 70, 0.42, { label = "Q" })
-  Theme.knob(220, 432, 70, 0.15, { label = "DRIVE" })
-  Theme.slider(310, 440, 70, 20, 0.75, { label = "MOD", ticks = 10 })
-  Theme.slider(310, 476, 70, 20, 0.30, { label = "KEY", ticks = 10, color = Theme.INFO })
-  Theme.led(35, 538, true, { size = 4, label = "LP24" })
-
-  -- Compressor card
-  Theme.card(420, 398, 380, 150)
-  Theme.text(432, 412, "COMP", Theme.TEXT)
-  Theme.knob(430, 432, 70, 0.55, { label = "THRESH" })
-  Theme.knob(520, 432, 70, 0.30, { label = "RATIO" })
-  Theme.knob(610, 432, 70, 0.72, { label = "ATK", color = Theme.WARNING })
-  Theme.meter(700, 420, 92, 48, 0.85, { orientation = "h", ticks = 6, label = "GR",    valueText = "-6", peak = 0.90, color = Theme.POSITIVE })
-  Theme.meter(700, 480, 92, 48, 0.75, { orientation = "h", ticks = 6, label = "OUT",   valueText = "-3", peak = 0.82 })
-
-  -- Meters-only card (stereo master)
-  Theme.card(820, 398, 180, 150)
-  Theme.text(832, 412, "MASTER", Theme.TEXT)
-  Theme.meter(840, 430, 20, 110, 0.68, { orientation = "v", ticks = 10, valueText = "L" })
-  Theme.meter(870, 430, 20, 110, 0.72, { orientation = "v", ticks = 10, valueText = "R", peak = 0.80 })
-  Theme.slider(920, 430, 32, 110, 0.55, { orientation = "v", ticks = 20, color = Theme.ACCENT })
+  Theme.slider(910, 430, 28, 94, 0.62, { orientation = "v", ticks = 20, color = Theme.ACCENT })
+  Theme.led(960, 450, true, { size = 4, color = Theme.POSITIVE })
+  Theme.led(960, 470, true, { size = 4, color = Theme.ALERT })
+  Theme.led(960, 490, false, { size = 4 })
+  Theme.readout(955, 510, { label = "", value = "01", color = Theme.ACCENT })
 end
 
 function preset.onLoad()
