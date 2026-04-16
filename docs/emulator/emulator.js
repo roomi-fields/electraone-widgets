@@ -1003,6 +1003,116 @@ async function runLua(L, code) {
   lua.lua_pop(L, 1);
 }
 
+// Map MK2 slotId → pixel bounds assuming a 6×6 single-page layout.
+// x: 20 + col*167, y: 28 + row*90. Default tile size 146×56.
+function slotToBounds(slotId) {
+  if (!slotId || slotId < 1) return [20, 28, 146, 56];
+  const s = slotId - 1;
+  const col = s % 6;
+  const row = (s / 6) | 0;
+  return [20 + col * 167, 28 + row * 90, 146, 56];
+}
+
+// Build an inline SVG that mirrors what Firebase would have generated for a
+// given preset — just enough structure so the rest of the pipeline (tile
+// matching, overlays, interaction) works without a real preview.svg.
+function synthesizeNativeTiles(stage, preset) {
+  const svgLayer = document.getElementById("svg-layer");
+  let html = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1016 560" width="1016" height="560">`;
+
+  for (const t of preset.tiles) {
+    if (t.visible === false) continue;
+    const name = t.name || "";
+    const type = t.type;
+    let [x, y, w, h] = slotToBounds(t.slotId);
+    // Custom tiles: stretch to the whole canvas so the paint callback owns
+    // the visual area. The Lua preset can resize further via setBounds.
+    if (type === "custom") { x = 20; y = 28; w = 976; h = 400; }
+
+    if (type === "fader") {
+      const textLineY = y + h - 8;
+      html += `<g type="fader" visible="visible" bounds="${x},${y},${w},${h}">
+        <rect x="${x}" y="${y + 12}" width="${w}" height="24" fill="#232830" fill-opacity="0.2"/>
+        <rect x="${x}" y="${y + 12}" width="0" height="24" fill="#E5823E"/>
+        <text x="${x + w/2}" y="${textLineY}" text-anchor="middle" fill="#E8EBF0" class="name" font-size="11" font-family="system-ui">${name}</text>
+      </g>`;
+    } else if (type === "pad") {
+      html += `<g type="pad" visible="visible" bounds="${x},${y},${w},${h}">
+        <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#232830" fill-opacity="0.4"/>
+        <text x="${x + w/2}" y="${y + h/2 + 4}" text-anchor="middle" fill="#E8EBF0" class="name" font-size="12" font-family="system-ui">${name}</text>
+      </g>`;
+    } else if (type === "list") {
+      html += `<g type="list" visible="visible" bounds="${x},${y},${w},${h}">
+        <text x="${x + w/2}" y="${y + h/2 - 6}" text-anchor="middle" fill="#5B8FD4" class="value" font-size="12" font-family="system-ui">—</text>
+        <text x="${x + w/2}" y="${y + h - 8}" text-anchor="middle" fill="#E8EBF0" class="name" font-size="11" font-family="system-ui">${name}</text>
+      </g>`;
+    } else if (type === "custom") {
+      html += `<g type="custom" visible="visible" bounds="${x},${y},${w},${h}">
+        <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#3A4048" stroke-dasharray="3"/>
+      </g>`;
+    }
+  }
+
+  html += `</svg>`;
+  svgLayer.innerHTML = html;
+
+  // Parse resulting tiles into stage.nativeTiles (same shape as the
+  // preview.svg path would have produced).
+  const tiles = [];
+  const TYPE_MAP = { cc7: CONST.PT_CC7, virtual: CONST.PT_VIRTUAL, nrpn: CONST.PT_NRPN, rpn: CONST.PT_RPN };
+  svgLayer.querySelectorAll("g[type][bounds]").forEach(g => {
+    const [bx, by, bw, bh] = g.getAttribute("bounds").split(",").map(Number);
+    tiles.push({ type: g.getAttribute("type"), bounds: [bx, by, bw, bh], el: g });
+  });
+  // Match by preset.tiles order (we emitted them in preset order)
+  let pi = 0;
+  for (const st of tiles) {
+    while (pi < preset.tiles.length && preset.tiles[pi].visible === false) pi++;
+    const pt = preset.tiles[pi];
+    if (!pt) break;
+    pi++;
+    st.ref = pt.reference;
+    st.name = pt.name;
+    st.mode = pt.mode;
+    st.slotId = pt.slotId;
+    const vo = pt.values && pt.values[0];
+    const msg = vo && vo.message;
+    if (msg) {
+      st.msgType = TYPE_MAP[msg.type] ?? CONST.PT_CC7;
+      st.msgParam = msg.parameterNumber ?? 0;
+      st.msgMin = msg.min ?? 0;
+      st.msgMax = msg.max ?? 127;
+      st.msgOn  = msg.onValue  ?? 127;
+      st.msgOff = msg.offValue ?? 0;
+    }
+    if (vo && typeof vo.function === "string") st.fnName = vo.function;
+    if (st.type === "list" && vo && Array.isArray(vo.textValues)) {
+      st.textValues = vo.textValues;
+      st.defaultValue = vo.defaultValue ?? vo.textValues[0]?.value;
+    }
+    if (vo && vo.defaultValue !== undefined && stage.tileValues[pt.reference] === undefined) {
+      const dv = vo.defaultValue;
+      if (typeof dv === "number") stage.tileValues[pt.reference] = dv;
+      else if (dv === "on")  stage.tileValues[pt.reference] = 1;
+      else if (dv === "off") stage.tileValues[pt.reference] = 0;
+    }
+    if (st.ref && !stage.controls[st.ref]) {
+      stage.controls[st.ref] = new Control(st.ref, stage, st.bounds);
+    }
+    if (st.ref && stage.controls[st.ref]) stage.controls[st.ref].tile = st;
+  }
+  stage.nativeTiles = tiles;
+
+  const custom = tiles.find(t => t.type === "custom");
+  if (custom) {
+    const [x, y, w, h] = custom.bounds;
+    for (const id of [1, 4, 5, custom.ref].filter(Boolean)) {
+      stage.controls[id] = new Control(id, stage, [x, y, w, h]);
+    }
+    logMsg(`Synthesized ${tiles.length} native tiles (ref=${custom.ref ?? "?"})`, "info");
+  }
+}
+
 async function loadWidget(slug) {
   document.getElementById("log").innerHTML = "";
   logMsg(`Loading widget: ${slug}`, "info");
@@ -1143,9 +1253,13 @@ async function loadWidget(slug) {
       logMsg(`Custom tile: ref=${custom.ref ?? "?"} bounds=${custom.bounds.join(",")}`, "info");
     }
   } catch (e) {
-    // Pure-Lua widgets (custom-paint only) legitimately ship without a
-    // preview.svg — silent skip.
+    // No Firebase-generated preview.svg — synthesize a minimal one from the
+    // preset's tiles so new widgets created in this repo (no web editor)
+    // still render their native faders / pads / lists.
     document.getElementById("stage").style.backgroundImage = "none";
+    if (preset && preset.tiles) {
+      synthesizeNativeTiles(stage, preset);
+    }
   }
 
   let code;

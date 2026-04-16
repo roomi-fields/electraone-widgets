@@ -31,7 +31,7 @@
     {
       "id": "adsr-a",
       "reference": 2,
-      "slotId": 25,
+      "slotId": 31,
       "type": "fader",
       "deviceId": 1,
       "color": "FFFFFF",
@@ -46,7 +46,7 @@
     {
       "id": "adsr-d",
       "reference": 3,
-      "slotId": 26,
+      "slotId": 32,
       "type": "fader",
       "deviceId": 1,
       "color": "FFFFFF",
@@ -61,7 +61,7 @@
     {
       "id": "adsr-s",
       "reference": 4,
-      "slotId": 27,
+      "slotId": 33,
       "type": "fader",
       "deviceId": 1,
       "color": "FFFFFF",
@@ -76,7 +76,7 @@
     {
       "id": "adsr-r",
       "reference": 5,
-      "slotId": 28,
+      "slotId": 34,
       "type": "fader",
       "deviceId": 1,
       "color": "FFFFFF",
