@@ -40,32 +40,21 @@ local function graph(x, y, w, h, points, opts)
     return x + p[1] * w, y + h - p[2] * h
   end
 
-  -- Optional solid fill under the curve. For every integer x column across
-  -- the plot, find the segment it sits in, interpolate the curve y, and
-  -- draw a 1-pixel-wide filled column from curve to baseline. Using
-  -- fillRect with integer coords avoids the sub-pixel banding that line-
-  -- based fills suffer from on anti-aliased canvases.
+  -- Optional fill under the curve: iterate pairs and draw vertical lines
+  -- from baseline to curve. Keeps the characteristic "raked" texture.
   if fill then
     graphics.setColor(color)
-    local baseY = math.floor(y + h - baseline * h)
-    local sp = {}
-    for i, p in ipairs(points) do
-      sp[i] = { toScreen(p) }
-    end
-    local minX = math.floor(sp[1][1])
-    local maxX = math.floor(sp[#sp][1])
-    local seg = 1
-    for px = minX, maxX do
-      -- Advance seg so sp[seg] ≤ px ≤ sp[seg+1]
-      while seg < #sp - 1 and px > sp[seg + 1][1] do seg = seg + 1 end
-      local x0, y0 = sp[seg][1], sp[seg][2]
-      local x1, y1 = sp[seg + 1][1], sp[seg + 1][2]
-      local dx = x1 - x0
-      local t = (dx == 0) and 0 or (px - x0) / dx
-      local curveY = math.floor(y0 + (y1 - y0) * t)
-      local yTop = math.min(curveY, baseY)
-      local yBot = math.max(curveY, baseY)
-      graphics.fillRect(px, yTop, 1, yBot - yTop + 1)
+    local baseY = y + h - baseline * h
+    for i = 1, #points - 1 do
+      local x0, y0 = toScreen(points[i])
+      local x1, y1 = toScreen(points[i + 1])
+      local steps = math.max(1, math.floor(math.abs(x1 - x0)))
+      for s = 0, steps do
+        local t = (steps == 0) and 0 or (s / steps)
+        local sx = x0 + (x1 - x0) * t
+        local sy = y0 + (y1 - y0) * t
+        graphics.drawLine(sx, math.min(sy, baseY), sx, math.max(sy, baseY))
+      end
     end
   end
 
