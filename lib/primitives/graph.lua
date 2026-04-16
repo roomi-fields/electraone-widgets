@@ -9,6 +9,9 @@
 --     fill  = false,          -- if true, solid-fill area under the curve
 --     grid  = 0,              -- N horizontal divisions (default 0 = none)
 --     baseline = 0,           -- y-value of the baseline for fill (0..1)
+--     markers = {0.25, 0.5},  -- section edges: vertical 2px lines from the
+--                             -- baseline up to the curve at each x, NEVER
+--                             -- above the curve. Drawn in the trace colour.
 --   })
 -- `points` is an array of {x, y} pairs with each coord normalised 0..1.
 -- y=0 is the bottom of the rect, y=1 the top.
@@ -65,11 +68,37 @@ local function graph(x, y, w, h, points, opts)
     end
   end
 
-  -- Contour trace (2px thick). When area is filled, render in TEXT for
-  -- visible outline on top of the accent fill. The trace naturally traces
-  -- section transitions through the curve's angle changes — no extra markers.
-  local traceColor = fill and Theme.TEXT or color
+  -- Contour trace + section markers share the same colour. When the area
+  -- is filled, render in ACCENT_DIM (darker copper) for an engraved-edge
+  -- look on top of the accent fill — stays in the warm family instead of
+  -- going cool off-white which reads dingy on orange. Otherwise use the
+  -- caller's trace colour.
+  local traceColor = fill and Theme.ACCENT_DIM or color
   graphics.setColor(traceColor)
+
+  -- Optional section markers — vertical 2px lines from baseline up to the
+  -- curve at each requested x (never above the curve, never above the fill).
+  if opts.markers then
+    local baseY = math.floor(y + h - baseline * h)
+    for _, mx in ipairs(opts.markers) do
+      local px = x + mx * w
+      for i = 1, #sp - 1 do
+        if px >= sp[i][1] and px <= sp[i + 1][1] then
+          local dx = sp[i + 1][1] - sp[i][1]
+          local t = (dx == 0) and 0 or (px - sp[i][1]) / dx
+          local curveY = math.floor(sp[i][2] + (sp[i + 1][2] - sp[i][2]) * t)
+          local px_i = math.floor(px)
+          local yTop = math.min(curveY, baseY)
+          local yBot = math.max(curveY, baseY)
+          graphics.drawLine(px_i,     yTop, px_i,     yBot)
+          graphics.drawLine(px_i + 1, yTop, px_i + 1, yBot)
+          break
+        end
+      end
+    end
+  end
+
+  -- Contour trace (2px thick) — drawn last so it sits on top of markers.
   for i = 1, #sp - 1 do
     local x0, y0 = sp[i][1], sp[i][2]
     local x1, y1 = sp[i + 1][1], sp[i + 1][2]
