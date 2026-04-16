@@ -1,5 +1,11 @@
 [
   {
+    "slug": "comp-meter",
+    "name": "Compressor Meter",
+    "description": "Three-column vertical VU (In / Gain Reduction / Out) with a horizontal threshold line on the input column. Four knobs below control the compressor: threshold, ratio (exp-mapped to 1:1..20:1), attack and release. GR is computed client-side from the input level + settings — no external sidechain plugin needed. A simulated input envelope animates the meters at 25 Hz in the emulator, so the widget demos cleanly without a DAW.",
+    "previewExt": "png"
+  },
+  {
     "slug": "cube-lfo",
     "name": "Cube LFO",
     "description": "Draws a rotating 3D cube and tracks the projected (X, Y) position of one vertex, sending those coordinates as outbound CC messages every 20 ms. Two faders control the X/Y angular speed (exponential curve, max ≈0.2 rad/tick); two list pickers re-map the outbound CC numbers on the fly. A pure custom-paint demo — the cube lives entirely inside the Lua timer loop.",
@@ -51,7 +57,7 @@
     "slug": "modern-adsr",
     "name": "Modern ADSR",
     "description": "A flat/modern replacement for the native `dx7envelope` tile. Renders a live ADSR envelope curve with filled area, grid, and value readouts under it; the four parameters are driven by native CC7 faders so any synth patch can wire them.",
-    "previewExt": null
+    "previewExt": "png"
   },
   {
     "slug": "multi-env-encoders",
