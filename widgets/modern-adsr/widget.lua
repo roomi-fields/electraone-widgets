@@ -110,7 +110,6 @@ function paintEnvelope(control)
   -- Curve (top half)
   Theme.graph(20, 42, W - 40, 320, envelopePoints(), {
     color = Theme.ACCENT,
-    fill = true,
     grid = 4,
   })
 
