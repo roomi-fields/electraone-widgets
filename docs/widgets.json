@@ -27,7 +27,7 @@
     "slug": "gallery-primitives",
     "name": "Primitives Gallery",
     "description": "Draws all primitives currently implemented (knob, bar, led) with multiple states, plus a composition sample showing how they stack into a \"filter card\" and \"drive card\" panel.",
-    "previewExt": null
+    "previewExt": "png"
   },
   {
     "slug": "loopop-tombola",
