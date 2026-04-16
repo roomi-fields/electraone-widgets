@@ -1143,7 +1143,8 @@ async function loadWidget(slug) {
       logMsg(`Custom tile: ref=${custom.ref ?? "?"} bounds=${custom.bounds.join(",")}`, "info");
     }
   } catch (e) {
-    logMsg("no preview.svg for background (ok for pure-Lua widgets): " + e.message, "info");
+    // Pure-Lua widgets (custom-paint only) legitimately ship without a
+    // preview.svg — silent skip.
     document.getElementById("stage").style.backgroundImage = "none";
   }
 
@@ -1170,7 +1171,7 @@ async function loadWidget(slug) {
     const themeCode = await (await fetch(`${RAW_BASE}/lib/theme.lua`)).text();
     await runLuaAsGlobal(L, themeCode, "Theme");
     // Attach each primitive as Theme.<name>
-    const primitives = ["knob", "bar", "led"];
+    const primitives = ["knob", "bar", "led", "meter", "slider"];
     for (const p of primitives) {
       try {
         const code = await (await fetch(`${RAW_BASE}/lib/primitives/${p}.lua`)).text();

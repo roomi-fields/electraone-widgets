@@ -6,7 +6,7 @@
 --   Theme.knob(x, y, size, value, {
 --     color = Theme.ACCENT,   -- value ring colour (default ACCENT)
 --     label = "CUTOFF",       -- caption below (optional)
---     valueText = "72",       -- override centered readout (optional; default is value × 100 rounded)
+--     valueText = "72",       -- override centred readout (optional)
 --   })
 -- `value` is normalised 0..1. `size` is the square bounding box width/height.
 
@@ -15,42 +15,43 @@ local function knob(x, y, size, value, opts)
   local cx = x + size / 2
   local cy = y + size / 2
   local r  = size / 2 - 4                      -- ring outer radius
-  local bodyR = r - 10                         -- inner body radius
+  local bodyR = r - 12                         -- inner disc radius
   local color = opts.color or Theme.ACCENT
-  local dim   = Theme.ELEVATED
   local label = opts.label
   local v = math.max(0, math.min(1, value or 0))
 
-  -- Angular sweep: 7 o'clock → 5 o'clock going clockwise = 270°.
-  -- In screen coords (y down), angle 0 = right, pi/2 = down.
-  -- 7 o'clock ≈ 135° = 3π/4, 5 o'clock ≈ 45° = π/4 (but past the bottom).
-  local startA = math.pi * 0.75                -- 135° (lower-left)
+  local startA = math.pi * 0.75                -- 135° (7 o'clock)
   local sweep  = math.pi * 1.5                 -- 270°
-  local segs   = 48                            -- circle approximation density
+  local segs   = 56
 
-  local lastX, lastY
-  -- Track (background ring)
-  graphics.setColor(dim)
-  for i = 0, segs do
-    local a = startA + sweep * (i / segs)
-    local px = cx + r * math.cos(a)
-    local py = cy + r * math.sin(a)
-    if lastX then graphics.drawLine(lastX, lastY, px, py) end
-    lastX, lastY = px, py
+  -- Helper: draw an arc segment set at radius `rr` between two normalised t
+  -- values (0..1 along the sweep). Two passes at slightly different radii
+  -- thicken the line without needing a native stroke-weight.
+  local function arc(rr, t0, t1, col)
+    graphics.setColor(col)
+    local lx, ly
+    local i0 = math.floor(segs * t0)
+    local i1 = math.ceil(segs * t1)
+    for i = i0, i1 do
+      local a = startA + sweep * (i / segs)
+      local px = cx + rr * math.cos(a)
+      local py = cy + rr * math.sin(a)
+      if lx then graphics.drawLine(lx, ly, px, py) end
+      lx, ly = px, py
+    end
   end
 
-  -- Value arc (coloured portion)
+  -- Track (dim background ring) — 3-pass for ≈3px thickness
+  arc(r,     0, 1, Theme.ELEVATED)
+  arc(r - 1, 0, 1, Theme.ELEVATED)
+  arc(r - 2, 0, 1, Theme.ELEVATED)
+
+  -- Value arc (coloured) — 4-pass for ≈4px thickness, more dominant
   if v > 0 then
-    graphics.setColor(color)
-    lastX, lastY = nil, nil
-    local valSegs = math.max(1, math.floor(segs * v))
-    for i = 0, valSegs do
-      local a = startA + sweep * (i / segs)
-      local px = cx + r * math.cos(a)
-      local py = cy + r * math.sin(a)
-      if lastX then graphics.drawLine(lastX, lastY, px, py) end
-      lastX, lastY = px, py
-    end
+    arc(r,     0, v, color)
+    arc(r - 1, 0, v, color)
+    arc(r - 2, 0, v, color)
+    arc(r - 3, 0, v, color)
   end
 
   -- Inner body (disc)
@@ -59,19 +60,25 @@ local function knob(x, y, size, value, opts)
   graphics.setColor(Theme.BORDER)
   graphics.drawCircle(cx, cy, bodyR)
 
-  -- Indicator line from centre to current position on the ring
+  -- Indicator: thick radial line from centre to the ring, in accent colour.
+  -- Drawn as 3 parallel lines offset perpendicularly for pseudo-stroke-weight.
   local indA = startA + sweep * v
-  local ix = cx + bodyR * math.cos(indA)
-  local iy = cy + bodyR * math.sin(indA)
+  local nx, ny = -math.sin(indA), math.cos(indA)    -- perpendicular unit
+  local ox = cx + (bodyR - 2) * math.cos(indA)
+  local oy = cy + (bodyR - 2) * math.sin(indA)
+  local ix = cx + r * math.cos(indA)
+  local iy = cy + r * math.sin(indA)
   graphics.setColor(color)
-  graphics.drawLine(cx, cy, ix, iy)
+  graphics.drawLine(ox, oy, ix, iy)
+  graphics.drawLine(ox + nx, oy + ny, ix + nx, iy + ny)
+  graphics.drawLine(ox - nx, oy - ny, ix - nx, iy - ny)
 
   -- Centred value readout
   local text = opts.valueText or tostring(math.floor(v * 100 + 0.5))
   graphics.setColor(Theme.TEXT)
   graphics.drawText(cx - #text * 4, cy - 6, text)
 
-  -- Label below the knob
+  -- Label below
   if label then
     graphics.setColor(Theme.TEXT_DIM)
     graphics.drawText(x + (size - #label * 6) / 2, y + size + 4, label)
