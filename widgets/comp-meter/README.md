@@ -4,7 +4,24 @@
 
 ## What it does
 
-Three-column vertical VU (In / Gain Reduction / Out) with a horizontal threshold line on the input column. Four knobs below control the compressor: threshold, ratio (exp-mapped to 1:1..20:1), attack and release. GR is computed client-side from the input level + settings — no external sidechain plugin needed. A simulated input envelope animates the meters at 25 Hz in the emulator, so the widget demos cleanly without a DAW.
+Three-column vertical VU (In / Gain Reduction / Out) with a horizontal threshold line on the input column. Four knobs below control the compressor: threshold, ratio (exp-mapped to 1:1..20:1), attack and release. GR is computed client-side from the input level + settings — no external sidechain plugin needed. A simulated input envelope animates the meters at 25 Hz, so the widget demos cleanly without a DAW.
+
+## How the movement works
+
+By default the widget **simulates its input level** — there's no external audio feeding it. On each 40 ms tick (25 Hz), `simulateInput()` multiplies two sine waves:
+
+- a **slow envelope** (≈ 23 s period) — shapes the overall loudness contour
+- a **faster modulator** (≈ 2.7 s period) — ripples on top
+
+The product looks like real programme material: crests that repeatedly cross the threshold. Whenever that happens:
+
+1. **GR meter** falls from the top → reduction = `(input - threshold) × (1 − 1/ratio)`
+2. **OUT meter** follows `input − GR`
+3. **Attack** sets how quickly GR rises to the target; **Release** sets how slowly it decays when input drops below threshold again
+
+Drag any knob vertically (or use physical pots 1–4 on MK2) to change the compression in real time and watch the GR curve react.
+
+**For live DAW monitoring** of an actual compressor plugin, replace `simulateInput()` inside `timer.onTick` with `input = parameterMap.getValue(1, PT_VIRTUAL, 5) / 127` and route your DAW's output-level CC to virtual param 5.
 
 ## Required tiles
 
