@@ -21,7 +21,7 @@
     "slug": "eq-3band",
     "name": "3-Band EQ",
     "description": "Three-band parametric EQ — low shelf + mid peak + high shelf — with a live response curve above nine control knobs (FREQ / GAIN / Q per band). Drag any knob or turn pots 1-6 on the MK2 to reshape the curve; the graph redraws instantly because the magnitude response is computed in Lua (no biquad processing, just Gaussian / sigmoid approximations in log-frequency space that read as a convincing EQ curve).",
-    "previewExt": null
+    "previewExt": "png"
   },
   {
     "slug": "gallery-primitives",
