@@ -63,12 +63,28 @@ local function graph(x, y, w, h, points, opts)
     end
   end
 
-  -- Optional vertical dividers at named section transitions.
+  -- Optional section edges: vertical lines from the baseline up to the curve
+  -- at each marker position. These trace the boundary of each filled region
+  -- without drawing a full-height divider.
   if opts.markers then
-    graphics.setColor(Theme.TEXT_DIM)
+    graphics.setColor(color)
+    local baseY = math.floor(y + h - baseline * h)
+    -- Reuse the screen-point array if fill already built one; otherwise build.
+    local sp = {}
+    for i, p in ipairs(points) do sp[i] = { toScreen(p) } end
     for _, mx in ipairs(opts.markers) do
-      local px = math.floor(x + mx * w)
-      graphics.drawLine(px, y + 1, px, y + h - 1)
+      local px = x + mx * w
+      -- Find the segment this marker falls in and interpolate y
+      for i = 1, #sp - 1 do
+        if px >= sp[i][1] and px <= sp[i + 1][1] then
+          local dx = sp[i + 1][1] - sp[i][1]
+          local t = (dx == 0) and 0 or (px - sp[i][1]) / dx
+          local curveY = math.floor(sp[i][2] + (sp[i + 1][2] - sp[i][2]) * t)
+          local px_i = math.floor(px)
+          graphics.drawLine(px_i, math.min(curveY, baseY), px_i, math.max(curveY, baseY))
+          break
+        end
+      end
     end
   end
 
