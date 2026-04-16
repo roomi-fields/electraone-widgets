@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 2,
+  "id": "modern-adsr",
+  "name": "Modern ADSR",
+  "description": "Flat/modern ADSR envelope with live curve + value readouts",
+  "targetDevice": "mk2",
+  "lua": "",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Local",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "adsr-curve",
+      "reference": 1,
+      "slotId": 1,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "Envelope",
+      "categoryId": "control",
+      "values": [
+        { "message": { "type": "virtual", "deviceId": 1, "parameterNumber": 99 } }
+      ],
+      "visible": true
+    },
+    {
+      "id": "adsr-a",
+      "reference": 2,
+      "slotId": 25,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "Attack",
+      "categoryId": "control",
+      "values": [
+        { "message": { "type": "cc7", "deviceId": 1, "parameterNumber": 1, "min": 0, "max": 127 }, "defaultValue": 19 }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "adsr-d",
+      "reference": 3,
+      "slotId": 26,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "Decay",
+      "categoryId": "control",
+      "values": [
+        { "message": { "type": "cc7", "deviceId": 1, "parameterNumber": 2, "min": 0, "max": 127 }, "defaultValue": 38 }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "adsr-s",
+      "reference": 4,
+      "slotId": 27,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "Sustain",
+      "categoryId": "control",
+      "values": [
+        { "message": { "type": "cc7", "deviceId": 1, "parameterNumber": 3, "min": 0, "max": 127 }, "defaultValue": 83 }
+      ],
+      "visible": true,
+      "mode": ""
+    },
+    {
+      "id": "adsr-r",
+      "reference": 5,
+      "slotId": 28,
+      "type": "fader",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "Release",
+      "categoryId": "control",
+      "values": [
+        { "message": { "type": "cc7", "deviceId": 1, "parameterNumber": 4, "min": 0, "max": 127 }, "defaultValue": 51 }
+      ],
+      "visible": true,
+      "mode": ""
+    }
+  ],
+  "pages": [
+    { "id": 1, "name": "Page 1" }
+  ],
+  "categories": [],
+  "firstPageId": 1
+}

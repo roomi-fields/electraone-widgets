@@ -48,6 +48,12 @@
     "previewExt": "png"
   },
   {
+    "slug": "modern-adsr",
+    "name": "Modern ADSR",
+    "description": "A flat/modern replacement for the native `dx7envelope` tile. Renders a live ADSR envelope curve with filled area, grid, and value readouts under it; the four parameters are driven by native CC7 faders so any synth patch can wire them.",
+    "previewExt": null
+  },
+  {
     "slug": "multi-env-encoders",
     "name": "multi env encoders",
     "description": "Six-point envelope editor driven entirely through encoders (pot 6 = active point, pot 10 = X/time, pot 11 = Y/level) plus touch drag on the canvas. On every edit the widget fills a Waldorf-style SysEx packet `{0x3E, 0x0E, devId, 0x20, bufNum, hh, pp, midiValue}` — send is commented out by default. Intended as a stripped-down, touch + encoder-only sibling of `midi-multi-env`.",
