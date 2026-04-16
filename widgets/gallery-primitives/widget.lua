@@ -52,10 +52,10 @@ function paintGallery(control)
   Theme.meter(500, 258, 220, 32, 0.95, { label = "SUM",valueText = "+2",  peak = 0.97, ticks = 10 })
 
   -- Vertical meters cluster
-  Theme.meter(760,  42, 40, 248, 0.65, { orientation = "v", ticks = 10, valueText = "L" })
-  Theme.meter(810,  42, 40, 248, 0.88, { orientation = "v", ticks = 10, valueText = "R", peak = 0.92 })
-  Theme.meter(860,  42, 40, 248, 0.30, { orientation = "v", ticks = 10, valueText = "C" })
-  Theme.meter(910,  42, 40, 248, 0.97, { orientation = "v", ticks = 10, valueText = "S", peak = 0.99 })
+  Theme.meter(760,  42, 22, 248, 0.65, { orientation = "v", ticks = 20, valueText = "L" })
+  Theme.meter(798,  42, 22, 248, 0.88, { orientation = "v", ticks = 20, valueText = "R", peak = 0.92 })
+  Theme.meter(836,  42, 22, 248, 0.30, { orientation = "v", ticks = 20, valueText = "C" })
+  Theme.meter(874,  42, 22, 248, 0.97, { orientation = "v", ticks = 20, valueText = "S", peak = 0.99 })
 
   ------------------------------------------------------------------
   -- LED row
@@ -99,8 +99,8 @@ function paintGallery(control)
   -- Meters-only card (stereo master)
   Theme.card(820, 398, 180, 150)
   Theme.text(832, 412, "MASTER", Theme.TEXT)
-  Theme.meter(840, 430, 28, 110, 0.68, { orientation = "v", ticks = 10, valueText = "L" })
-  Theme.meter(878, 430, 28, 110, 0.72, { orientation = "v", ticks = 10, valueText = "R", peak = 0.80 })
+  Theme.meter(840, 430, 20, 110, 0.68, { orientation = "v", ticks = 10, valueText = "L" })
+  Theme.meter(870, 430, 20, 110, 0.72, { orientation = "v", ticks = 10, valueText = "R", peak = 0.80 })
   Theme.slider(920, 430, 32, 110, 0.55, { orientation = "v", ticks = 20, color = Theme.ACCENT })
 end
 

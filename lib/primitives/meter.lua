@@ -53,10 +53,13 @@ local function meter(x, y, w, h, value, opts)
     end
     -- Ticks on the right edge
     if ticks > 0 then
-      graphics.setColor(Theme.BORDER)
+      graphics.setColor(Theme.TEXT_DIM)
       for i = 1, ticks - 1 do
         local ty = by + (bh * i) // ticks
-        graphics.drawLine(bx + bw - 4, ty, bx + bw, ty)
+        local major = (i % 5 == 0)
+        local len = major and 10 or 7
+        graphics.drawLine(bx + bw - len, ty, bx + bw, ty)
+        if major then graphics.drawLine(bx + bw - len, ty + 1, bx + bw, ty + 1) end
       end
     end
     -- Peak marker
@@ -72,10 +75,13 @@ local function meter(x, y, w, h, value, opts)
     end
     -- Ticks on the bottom edge
     if ticks > 0 then
-      graphics.setColor(Theme.BORDER)
+      graphics.setColor(Theme.TEXT_DIM)
       for i = 1, ticks - 1 do
         local tx = bx + (bw * i) // ticks
-        graphics.drawLine(tx, by + bh - 4, tx, by + bh)
+        local major = (i % 5 == 0)
+        local len = major and 10 or 7
+        graphics.drawLine(tx, by + bh - len, tx, by + bh)
+        if major then graphics.drawLine(tx + 1, by + bh - len, tx + 1, by + bh) end
       end
     end
     -- Peak marker
