@@ -12,6 +12,8 @@
 --     label = "IN",             -- caption
 --     valueText = "-6 dB",      -- right / top readout
 --     ticks = 6,                -- number of graduations (default 6, 0 to disable)
+--     inverted = false,         -- fill from the opposite end (top for "v",
+--                               -- right for "h"). Use for compressor GR.
 --   })
 
 local function meter(x, y, w, h, value, opts)
@@ -46,10 +48,15 @@ local function meter(x, y, w, h, value, opts)
   Theme.outline(bx, by, bw, bh, Theme.BORDER)
 
   -- Fill + ticks depending on orientation
+  local inverted = opts.inverted
   if orient == "v" then
     local fillH = math.floor(bh * v)
     if fillH > 0 then
-      Theme.rect(bx, by + bh - fillH, bw, fillH, color)
+      if inverted then
+        Theme.rect(bx, by, bw, fillH, color)
+      else
+        Theme.rect(bx, by + bh - fillH, bw, fillH, color)
+      end
     end
     -- Ticks on the right edge
     if ticks > 0 then
@@ -64,14 +71,18 @@ local function meter(x, y, w, h, value, opts)
     end
     -- Peak marker
     if peak and peak > 0 then
-      local py = by + bh - math.floor(bh * peak)
-      graphics.setColor(Theme.TEXT)
+      local py = inverted and (by + math.floor(bh * peak)) or (by + bh - math.floor(bh * peak))
+      graphics.setColor(Theme.TEXT_DIM)
       graphics.drawLine(bx, py, bx + bw, py)
     end
   else
     local fillW = math.floor(bw * v)
     if fillW > 0 then
-      Theme.rect(bx, by, fillW, bh, color)
+      if inverted then
+        Theme.rect(bx + bw - fillW, by, fillW, bh, color)
+      else
+        Theme.rect(bx, by, fillW, bh, color)
+      end
     end
     -- Ticks on the bottom edge
     if ticks > 0 then
@@ -86,8 +97,8 @@ local function meter(x, y, w, h, value, opts)
     end
     -- Peak marker
     if peak and peak > 0 then
-      local px = bx + math.floor(bw * peak)
-      graphics.setColor(Theme.TEXT)
+      local px = inverted and (bx + bw - math.floor(bw * peak)) or (bx + math.floor(bw * peak))
+      graphics.setColor(Theme.TEXT_DIM)
       graphics.drawLine(px, by, px, by + bh)
     end
   end
