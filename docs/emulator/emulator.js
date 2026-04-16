@@ -634,7 +634,16 @@ function setupEnv(L, stage) {
 function fireParameterChange(stage, tile, midiValue) {
   const L = stage.L;
   if (!L) return;
-  const mockControl = { getId: () => tile.ref, getName: () => tile.name || "", getColor: () => 0xFFFFFF };
+  const mockControl = {
+    getId: () => tile.ref,
+    getName: () => tile.name || "",
+    getColor: () => 0xFFFFFF,
+    setName: (n) => { tile.name = n; },
+    setColor: () => {},
+    setVisible: () => {},
+    setLabel: () => {},
+    repaint: () => stage.paintAll(),
+  };
   const mockMessage = {
     getValue: () => midiValue,
     getParameterNumber: () => tile.msgParam ?? tile.ref,
@@ -782,11 +791,10 @@ function createNativeTileOverlays(stage) {
         el.addEventListener("pointerup", release);
         el.addEventListener("pointerleave", release);
       } else {
-        // toggle: flip between message's on/off values (not hardcoded 0/127 —
-        // widgets may expect 1/0 or other values).
-        const onV = tile.msgOn ?? 127, offV = tile.msgOff ?? 0;
+        // Toggle: normalise to 1/0 in the callback value — matches MK2
+        // firmware behaviour. Widgets commonly test `v == 1`.
         el.addEventListener("click", () => {
-          const v = stage.tileValues[tile.ref] === onV ? offV : onV;
+          const v = stage.tileValues[tile.ref] ? 0 : 1;
           stage.tileValues[tile.ref] = v;
           updateTileVisual(tile, v);
           fireParameterChange(stage, tile, v);
