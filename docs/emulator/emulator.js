@@ -1162,13 +1162,30 @@ async function loadWidget(slug) {
   stage.L = L;
   setupEnv(L, stage);
 
-  // Pre-load lib/theme.lua so widgets can use `Theme.knob(…)` etc. without
-  // having to paste the module inline. For device deployment, users paste
-  // lib/theme.lua at the top of their widget.lua — the emulator does it
-  // transparently here.
+  // Pre-load lib/theme.lua + lib/primitives/*.lua so widgets can use
+  // `Theme.ACCENT` and `Theme.knob(…)` without pasting the modules inline.
+  // For device deployment, users paste the files they need at the top of
+  // their widget.lua — the emulator does it transparently here.
   try {
     const themeCode = await (await fetch(`${RAW_BASE}/lib/theme.lua`)).text();
     await runLuaAsGlobal(L, themeCode, "Theme");
+    // Attach each primitive as Theme.<name>
+    const primitives = ["knob", "bar", "led"];
+    for (const p of primitives) {
+      try {
+        const code = await (await fetch(`${RAW_BASE}/lib/primitives/${p}.lua`)).text();
+        await runLuaAsGlobal(L, code, "__prim_" + p);
+        // Move __prim_<p> onto Theme.<p>
+        lua.lua_getglobal(L, to_luastring("Theme"));
+        lua.lua_getglobal(L, to_luastring("__prim_" + p));
+        lua.lua_setfield(L, -2, to_luastring(p));
+        lua.lua_pop(L, 1);
+        lua.lua_pushnil(L);
+        lua.lua_setglobal(L, to_luastring("__prim_" + p));
+      } catch (e) {
+        logMsg(`primitive ${p} skipped: ${e.message}`, "info");
+      }
+    }
   } catch (e) {
     logMsg("theme preload skipped: " + e.message, "info");
   }

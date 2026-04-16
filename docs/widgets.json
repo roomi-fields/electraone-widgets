@@ -12,6 +12,12 @@
     "previewExt": "png"
   },
   {
+    "slug": "gallery-primitives",
+    "name": "Primitives Gallery",
+    "description": "Draws all primitives currently implemented (knob, bar, led) with multiple states, plus a composition sample showing how they stack into a \"filter card\" and \"drive card\" panel.",
+    "previewExt": null
+  },
+  {
     "slug": "loopop-tombola",
     "name": "Loopop's Tombola",
     "description": "OP-1-style physics sequencer: up to 6 coloured balls bounce inside a rotating hexagonal (or 3–12 sided) container, triggering MIDI notes when they hit a wall. Each wall plays a note from one of 13 built-in scales; CCs control gravity, wall bounciness, rotation, spawn rate and ball lifespan. Note-on/note-off messages are sent on MIDI port 1 + port 2 (USB + 3.5 mm jack), channel 1.",
