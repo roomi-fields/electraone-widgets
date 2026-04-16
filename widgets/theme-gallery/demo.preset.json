@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 2,
+  "id": "theme-gallery",
+  "name": "Theme Gallery",
+  "description": "Design-system reference for electraone-widgets",
+  "targetDevice": "mk2",
+  "lua": "",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Local",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "theme-gallery-tile-1",
+      "reference": 1,
+      "slotId": 1,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "Gallery",
+      "categoryId": "control",
+      "values": [
+        {
+          "message": {
+            "type": "virtual",
+            "deviceId": 1,
+            "parameterNumber": 1
+          }
+        }
+      ],
+      "visible": true
+    }
+  ],
+  "pages": [
+    {
+      "id": 1,
+      "name": "Page 1"
+    }
+  ],
+  "categories": [],
+  "firstPageId": 1
+}

@@ -923,6 +923,23 @@ function updateTileVisual(tile, value) {
   }
 }
 
+// Run a Lua chunk whose last statement is `return X` and store the returned
+// value in a global of the given name.
+async function runLuaAsGlobal(L, code, globalName) {
+  const buf = to_luastring(code);
+  if (lauxlib.luaL_loadbuffer(L, buf, buf.length, to_luastring("=" + globalName)) !== 0) {
+    const msg = safeTostring(L, -1);
+    lua.lua_pop(L, 1);
+    throw new Error("load " + globalName + ": " + msg);
+  }
+  if (lua.lua_pcall(L, 0, 1, 0) !== 0) {
+    const msg = safeTostring(L, -1);
+    lua.lua_pop(L, 1);
+    throw new Error("run " + globalName + ": " + msg);
+  }
+  lua.lua_setglobal(L, to_luastring(globalName));
+}
+
 async function runLua(L, code) {
   const buf = to_luastring(code);
   console.log("[runLua] loadbuffer", buf.length, "bytes");
@@ -1132,6 +1149,18 @@ async function loadWidget(slug) {
   lualib.luaL_openlibs(L);
   stage.L = L;
   setupEnv(L, stage);
+
+  // Pre-load lib/theme.lua so widgets can use `Theme.knob(…)` etc. without
+  // having to paste the module inline. For device deployment, users paste
+  // lib/theme.lua at the top of their widget.lua — the emulator does it
+  // transparently here.
+  try {
+    const themeCode = await (await fetch(`${RAW_BASE}/lib/theme.lua`)).text();
+    await runLuaAsGlobal(L, themeCode, "Theme");
+  } catch (e) {
+    logMsg("theme preload skipped: " + e.message, "info");
+  }
+
   await runLua(L, code);
 
   // Build interactive overlays for native tiles
