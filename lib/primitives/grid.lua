@@ -1,25 +1,26 @@
 -- electraone-widgets · primitive: grid
--- N×M cells with per-cell state (on/off + intensity). Primary use-case is
--- step sequencers and drum matrices.
+-- Step-sequencer / drum-matrix tile grid. Each cell shows on/off state,
+-- optional velocity intensity, and the currently-playing step gets a
+-- prominent highlight bar.
 -- Requires Theme.
 --
 -- Usage:
 --   Theme.grid(x, y, w, h, cols, rows, cells, {
 --     color = Theme.ACCENT,   -- on-cell colour (default ACCENT)
---     active = 3,             -- 1-based index of the current step (optional
---                              --   highlight box around it)
---     gap = 2,                -- pixels between cells (default 2)
+--     active = 3,             -- 1-based index of current step (optional)
+--     gap = 3,                -- pixels between cells (default 3)
 --   })
--- `cells` is an array indexed by (row - 1) * cols + col, each entry either:
---   - nil or false        → off
---   - true                → fully on
---   - number 0..1         → intensity (velocity)
+-- `cells[idx]` where idx = (row-1) * cols + col:
+--   nil / false         → off
+--   true                → full velocity
+--   number 0..1         → velocity fraction
 
 local function grid(x, y, w, h, cols, rows, cells, opts)
   opts = opts or {}
   local color = opts.color or Theme.ACCENT
+  local colorDim = opts.colorDim or Theme.ACCENT_DIM
   local active = opts.active
-  local gap = opts.gap or 2
+  local gap = opts.gap or 3
 
   local cellW = (w - gap * (cols - 1)) / cols
   local cellH = (h - gap * (rows - 1)) / rows
@@ -30,32 +31,32 @@ local function grid(x, y, w, h, cols, rows, cells, opts)
       local cy = y + (r - 1) * (cellH + gap)
       local idx = (r - 1) * cols + col
       local state = cells and cells[idx]
+      local isActive = active == idx
+      local intensity = 0
+      if state == true then intensity = 1
+      elseif type(state) == "number" then intensity = math.max(0, math.min(1, state)) end
 
-      -- Off-state background
-      Theme.rect(cx, cy, cellW, cellH, Theme.ELEVATED)
+      -- Base cell — SURFACE for off, ELEVATED for active column (visual lane)
+      local bg = isActive and Theme.ELEVATED or Theme.SURFACE
+      Theme.rect(cx, cy, cellW, cellH, bg)
 
-      -- On-state or intensity fill
-      if state then
-        local intensity = (state == true) and 1 or math.max(0, math.min(1, state))
-        if intensity > 0 then
-          -- Fill full rect with colour — LCD flattens alpha, so we blend
-          -- manually by choosing between ACCENT_DIM and color based on
-          -- intensity.
-          if intensity >= 0.8 then
-            Theme.rect(cx, cy, cellW, cellH, color)
-          elseif intensity >= 0.4 then
-            Theme.rect(cx, cy, cellW, cellH, Theme.ACCENT_DIM)
-            Theme.outline(cx, cy, cellW, cellH, color)
-          else
-            Theme.outline(cx, cy, cellW, cellH, color)
-          end
-        end
+      -- On-cell fill: colour strength follows velocity
+      if intensity > 0 then
+        local fc = intensity >= 0.66 and color or colorDim
+        -- Inset pad so the cell shows its lane; the velocity rectangle grows
+        -- upward from the cell bottom (like a mini-bar).
+        local pad = 2
+        local barH = math.max(3, math.floor((cellH - pad * 2) * intensity))
+        Theme.rect(cx + pad, cy + cellH - pad - barH, cellW - pad * 2, barH, fc)
       end
 
-      -- Active-step highlight
-      if active and idx == active then
-        graphics.setColor(Theme.TEXT)
-        graphics.drawRect(cx - 1, cy - 1, cellW + 2, cellH + 2)
+      -- Subtle border for every cell
+      Theme.outline(cx, cy, cellW, cellH, Theme.BORDER)
+
+      -- Active-step: bright top edge (3px tall) so the running position
+      -- reads instantly without competing with the velocity fill.
+      if isActive then
+        Theme.rect(cx, cy, cellW, 3, Theme.TEXT)
       end
     end
   end
