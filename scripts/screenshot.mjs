@@ -18,12 +18,12 @@ const outPath = resolve(outDir, "preview.png");
 
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1060, height: 620 } });
-// Bypass HTTP cache so freshly-pushed widget.lua / lib files are fetched.
-await context.route("**/*", (route) => {
-  const headers = { ...route.request().headers(), "cache-control": "no-cache", "pragma": "no-cache" };
-  route.continue({ headers });
-});
 const page = await context.newPage();
+// Disable the browser cache entirely via CDP so every widget.lua /
+// lib/*.lua fetch hits the origin — GitHub raw (Fastly) sends max-age=300
+// and route.continue doesn't bypass the disk cache on its own.
+const cdp = await context.newCDPSession(page);
+await cdp.send("Network.setCacheDisabled", { cacheDisabled: true });
 page.on("pageerror", (e) => console.error("page err:", e.message));
 
 await page.goto(`${baseUrl}?w=${slug}&t=${Date.now()}`, { waitUntil: "networkidle" });
