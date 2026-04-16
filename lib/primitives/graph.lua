@@ -6,9 +6,10 @@
 -- Usage:
 --   Theme.graph(x, y, w, h, points, {
 --     color = Theme.ACCENT,   -- trace colour (default ACCENT)
---     fill  = false,          -- if true, fill area under the curve
+--     fill  = false,          -- if true, solid-fill area under the curve
 --     grid  = 0,              -- N horizontal divisions (default 0 = none)
 --     baseline = 0,           -- y-value of the baseline for fill (0..1)
+--     markers = {0.2, 0.5},   -- vertical dividers at these normalised xs
 --   })
 -- `points` is an array of {x, y} pairs with each coord normalised 0..1.
 -- y=0 is the bottom of the rect, y=1 the top.
@@ -40,21 +41,34 @@ local function graph(x, y, w, h, points, opts)
     return x + p[1] * w, y + h - p[2] * h
   end
 
-  -- Optional fill under the curve: iterate pairs and draw vertical lines
-  -- from baseline to curve. Keeps the characteristic "raked" texture.
+  -- Optional solid fill under the curve — one fillRect per integer column.
   if fill then
     graphics.setColor(color)
-    local baseY = y + h - baseline * h
-    for i = 1, #points - 1 do
-      local x0, y0 = toScreen(points[i])
-      local x1, y1 = toScreen(points[i + 1])
-      local steps = math.max(1, math.floor(math.abs(x1 - x0)))
-      for s = 0, steps do
-        local t = (steps == 0) and 0 or (s / steps)
-        local sx = x0 + (x1 - x0) * t
-        local sy = y0 + (y1 - y0) * t
-        graphics.drawLine(sx, math.min(sy, baseY), sx, math.max(sy, baseY))
-      end
+    local baseY = math.floor(y + h - baseline * h)
+    local sp = {}
+    for i, p in ipairs(points) do sp[i] = { toScreen(p) } end
+    local minX = math.floor(sp[1][1])
+    local maxX = math.floor(sp[#sp][1])
+    local seg = 1
+    for px = minX, maxX do
+      while seg < #sp - 1 and px > sp[seg + 1][1] do seg = seg + 1 end
+      local x0, y0 = sp[seg][1], sp[seg][2]
+      local x1, y1 = sp[seg + 1][1], sp[seg + 1][2]
+      local dx = x1 - x0
+      local t = (dx == 0) and 0 or (px - x0) / dx
+      local curveY = math.floor(y0 + (y1 - y0) * t)
+      local yTop = math.min(curveY, baseY)
+      local yBot = math.max(curveY, baseY)
+      graphics.fillRect(px, yTop, 1, yBot - yTop + 1)
+    end
+  end
+
+  -- Optional vertical dividers at named section transitions.
+  if opts.markers then
+    graphics.setColor(Theme.TEXT_DIM)
+    for _, mx in ipairs(opts.markers) do
+      local px = math.floor(x + mx * w)
+      graphics.drawLine(px, y + 1, px, y + h - 1)
     end
   end
 

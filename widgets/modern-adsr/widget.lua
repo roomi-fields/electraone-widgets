@@ -108,10 +108,20 @@ function paintEnvelope(control)
   Theme.line(20, 30, W - 20, 30, Theme.BORDER)
 
   -- Curve (top half)
+  -- Compute section transitions for vertical dividers
+  local a, d, s, r = adsr.a, adsr.d, adsr.s, adsr.r
+  local hold = 0.20
+  local total = a + d + hold + r
+  local markers
+  if total > 0 then
+    markers = { a / total, (a + d) / total, (a + d + hold) / total }
+  end
+
   Theme.graph(20, 42, W - 40, 320, envelopePoints(), {
     color = Theme.ACCENT,
     fill = true,
     grid = 4,
+    markers = markers,
   })
 
   -- 4 knobs with their readouts inline
