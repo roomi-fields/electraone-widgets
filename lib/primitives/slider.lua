@@ -1,17 +1,18 @@
 -- electraone-widgets · primitive: slider
 -- Linear fader: thin track with a rectangular handle marking the current
--- position. Style = synth-panel linear pot (as opposed to the bar
--- primitive which fills 0 → value).
+-- position. Style = synth-panel linear pot, optional millimetre-ruler
+-- style ticks on both sides of the track.
 -- Requires Theme.
 --
 -- Usage:
 --   Theme.slider(x, y, w, h, value, {
---     orientation = "h" | "v",  -- default "h"
---     color = Theme.ACCENT,     -- handle + tint colour (default ACCENT)
---     label = "ATTACK",         -- caption
---     valueText = "12 ms",      -- readout
---     bipolar = false,          -- if true, track colours from centre outward
---                               --   (useful for PAN, DETUNE, etc.)
+--     orientation = "h" | "v",   -- default "h"
+--     color = Theme.ACCENT,      -- track fill colour (default ACCENT)
+--     label = "ATTACK",          -- caption
+--     valueText = "12 ms",       -- readout
+--     bipolar = false,           -- if true, fill from centre outward
+--     ticks = 20,                -- graduation count, both sides, every 5th longer
+--                                 --   (omit or 0 to disable)
 --   })
 
 local function slider(x, y, w, h, value, opts)
@@ -22,6 +23,7 @@ local function slider(x, y, w, h, value, opts)
   local label = opts.label
   local vtext = opts.valueText
   local bipolar = opts.bipolar
+  local ticks = opts.ticks
 
   local headerH = (label or vtext) and 14 or 0
 
@@ -36,76 +38,108 @@ local function slider(x, y, w, h, value, opts)
 
   local bx, by, bw, bh = x, y + headerH, w, h - headerH
 
-  if orient == "v" then
-    -- Thin vertical track down the middle
-    local trackX = bx + bw // 2
-    graphics.setColor(Theme.ELEVATED)
-    graphics.drawLine(trackX,     by, trackX,     by + bh)
-    graphics.drawLine(trackX - 1, by, trackX - 1, by + bh)
-    graphics.drawLine(trackX + 1, by, trackX + 1, by + bh)
+  -- Helper: draw a 2-pixel-wide line (pseudo-stroke-weight)
+  local function fat(x0, y0, x1, y1, col)
+    graphics.setColor(col)
+    graphics.drawLine(x0, y0, x1, y1)
+    if x0 == x1 then
+      graphics.drawLine(x0 + 1, y0, x1 + 1, y1)
+    else
+      graphics.drawLine(x0, y0 + 1, x1, y1 + 1)
+    end
+  end
 
-    -- Colour fill from bottom to value (or bipolar from centre)
+  if orient == "v" then
+    local trackX = bx + bw // 2
+
+    -- Track (3px thick)
+    graphics.setColor(Theme.ELEVATED)
+    for dx = -1, 1 do graphics.drawLine(trackX + dx, by, trackX + dx, by + bh) end
+
+    -- Colour fill
     graphics.setColor(color)
+    local y0, y1
     if bipolar then
       local mid = by + bh / 2
       local posY = by + bh - bh * v
-      local y0 = math.min(mid, posY)
-      local y1 = math.max(mid, posY)
-      graphics.drawLine(trackX,     y0, trackX,     y1)
-      graphics.drawLine(trackX - 1, y0, trackX - 1, y1)
-      graphics.drawLine(trackX + 1, y0, trackX + 1, y1)
-      -- Centre tick
+      y0, y1 = math.min(mid, posY), math.max(mid, posY)
       graphics.setColor(Theme.BORDER)
-      graphics.drawLine(bx, mid, bx + bw, mid)
+      graphics.drawLine(trackX - 6, mid, trackX + 6, mid)
+      graphics.setColor(color)
     else
-      local y0 = by + bh - bh * v
-      local y1 = by + bh
-      graphics.drawLine(trackX,     y0, trackX,     y1)
-      graphics.drawLine(trackX - 1, y0, trackX - 1, y1)
-      graphics.drawLine(trackX + 1, y0, trackX + 1, y1)
+      y0, y1 = by + bh - bh * v, by + bh
+    end
+    for dx = -1, 1 do graphics.drawLine(trackX + dx, y0, trackX + dx, y1) end
+
+    -- Ruler ticks — both sides, close to track, every 5th longer + thicker
+    if ticks and ticks > 0 then
+      graphics.setColor(Theme.TEXT_DIM)
+      for i = 0, ticks do
+        local ty = by + bh - (bh * i / ticks)
+        local major = (i % 5 == 0)
+        local len = major and 5 or 2
+        graphics.drawLine(trackX - 4 - len, ty, trackX - 4, ty)
+        graphics.drawLine(trackX + 4,       ty, trackX + 4 + len, ty)
+        if major then
+          graphics.drawLine(trackX - 4 - len, ty + 1, trackX - 4, ty + 1)
+          graphics.drawLine(trackX + 4,       ty + 1, trackX + 4 + len, ty + 1)
+        end
+      end
     end
 
-    -- Handle — horizontal rectangle at the value position
-    local handleY = by + bh - bh * v - 3
-    local handleH = 6
-    local handleW = bw - 4
-    local handleX = bx + 2
-    Theme.rect(handleX, handleY, handleW, handleH, Theme.TEXT)
-    Theme.outline(handleX, handleY, handleW, handleH, color)
+    -- Handle: narrow rectangle, tall, dark body with horizontal white mark
+    local hw = 18
+    local hh = 12
+    local hx = trackX - hw / 2
+    local hy = by + bh - bh * v - hh / 2
+    Theme.rect(hx, hy, hw, hh, Theme.CANVAS)
+    Theme.outline(hx, hy, hw, hh, Theme.TEXT_DIM)
+    -- white horizontal bar through the middle (2px)
+    fat(hx + 2, hy + hh // 2, hx + hw - 2, hy + hh // 2, Theme.TEXT)
   else
-    -- Horizontal
     local trackY = by + bh // 2
+
     graphics.setColor(Theme.ELEVATED)
-    graphics.drawLine(bx, trackY,     bx + bw, trackY)
-    graphics.drawLine(bx, trackY - 1, bx + bw, trackY - 1)
-    graphics.drawLine(bx, trackY + 1, bx + bw, trackY + 1)
+    for dy = -1, 1 do graphics.drawLine(bx, trackY + dy, bx + bw, trackY + dy) end
 
     graphics.setColor(color)
+    local x0, x1
     if bipolar then
       local mid = bx + bw / 2
       local posX = bx + bw * v
-      local x0 = math.min(mid, posX)
-      local x1 = math.max(mid, posX)
-      graphics.drawLine(x0, trackY,     x1, trackY)
-      graphics.drawLine(x0, trackY - 1, x1, trackY - 1)
-      graphics.drawLine(x0, trackY + 1, x1, trackY + 1)
+      x0, x1 = math.min(mid, posX), math.max(mid, posX)
       graphics.setColor(Theme.BORDER)
-      graphics.drawLine(mid, by, mid, by + bh)
+      graphics.drawLine(mid, trackY - 6, mid, trackY + 6)
+      graphics.setColor(color)
     else
-      local x0 = bx
-      local x1 = bx + bw * v
-      graphics.drawLine(x0, trackY,     x1, trackY)
-      graphics.drawLine(x0, trackY - 1, x1, trackY - 1)
-      graphics.drawLine(x0, trackY + 1, x1, trackY + 1)
+      x0, x1 = bx, bx + bw * v
+    end
+    for dy = -1, 1 do graphics.drawLine(x0, trackY + dy, x1, trackY + dy) end
+
+    -- Ruler ticks — above and below track
+    if ticks and ticks > 0 then
+      graphics.setColor(Theme.TEXT_DIM)
+      for i = 0, ticks do
+        local tx = bx + (bw * i / ticks)
+        local major = (i % 5 == 0)
+        local len = major and 5 or 2
+        graphics.drawLine(tx, trackY - 4 - len, tx, trackY - 4)
+        graphics.drawLine(tx, trackY + 4,       tx, trackY + 4 + len)
+        if major then
+          graphics.drawLine(tx + 1, trackY - 4 - len, tx + 1, trackY - 4)
+          graphics.drawLine(tx + 1, trackY + 4,       tx + 1, trackY + 4 + len)
+        end
+      end
     end
 
-    -- Handle — vertical rectangle at the value position
-    local handleX = bx + bw * v - 3
-    local handleW = 6
-    local handleY = by + 2
-    local handleH = bh - 4
-    Theme.rect(handleX, handleY, handleW, handleH, Theme.TEXT)
-    Theme.outline(handleX, handleY, handleW, handleH, color)
+    -- Handle: narrow, tall
+    local hw = 12
+    local hh = 18
+    local hx = bx + bw * v - hw / 2
+    local hy = by + bh // 2 - hh / 2
+    Theme.rect(hx, hy, hw, hh, Theme.CANVAS)
+    Theme.outline(hx, hy, hw, hh, Theme.TEXT_DIM)
+    fat(hx + hw // 2, hy + 2, hx + hw // 2, hy + hh - 2, Theme.TEXT)
   end
 end
 

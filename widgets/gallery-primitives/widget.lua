@@ -29,10 +29,10 @@ function paintGallery(control)
   -- Slider row (h + bipolar + v)
   ------------------------------------------------------------------
   Theme.text(660, 40, "SLIDER — linear pot with handle", Theme.TEXT_DIM)
-  Theme.slider(660, 58, 160, 28, 0.30, { label = "ATTACK", valueText = "12 ms" })
-  Theme.slider(830, 58, 160, 28, 0.72, { label = "DECAY",  valueText = "180 ms", color = Theme.WARNING })
-  Theme.slider(660, 94, 160, 28, 0.30, { label = "PAN L→R", valueText = "-20%", bipolar = true, color = Theme.INFO })
-  Theme.slider(830, 94, 160, 28, 0.80, { label = "DETUNE",  valueText = "+12c", bipolar = true, color = Theme.POSITIVE })
+  Theme.slider(660, 58, 160, 28, 0.30, { label = "ATTACK", valueText = "12 ms",  ticks = 20 })
+  Theme.slider(830, 58, 160, 28, 0.72, { label = "DECAY",  valueText = "180 ms", ticks = 20, color = Theme.WARNING })
+  Theme.slider(660, 94, 160, 28, 0.30, { label = "PAN L→R", valueText = "-20%", ticks = 10, bipolar = true, color = Theme.INFO })
+  Theme.slider(830, 94, 160, 28, 0.80, { label = "DETUNE",  valueText = "+12c", ticks = 10, bipolar = true, color = Theme.POSITIVE })
 
   ------------------------------------------------------------------
   -- Bar row
@@ -83,8 +83,8 @@ function paintGallery(control)
   Theme.knob( 40, 432, 70, 0.68, { label = "FREQ" })
   Theme.knob(130, 432, 70, 0.42, { label = "Q" })
   Theme.knob(220, 432, 70, 0.15, { label = "DRIVE" })
-  Theme.slider(310, 440, 70, 20, 0.75, { label = "MOD" })
-  Theme.slider(310, 476, 70, 20, 0.30, { label = "KEY",  color = Theme.INFO })
+  Theme.slider(310, 440, 70, 20, 0.75, { label = "MOD", ticks = 10 })
+  Theme.slider(310, 476, 70, 20, 0.30, { label = "KEY", ticks = 10, color = Theme.INFO })
   Theme.led(35, 538, true, { size = 4, label = "LP24" })
 
   -- Compressor card
@@ -101,7 +101,7 @@ function paintGallery(control)
   Theme.text(832, 412, "MASTER", Theme.TEXT)
   Theme.meter(840, 430, 28, 110, 0.68, { orientation = "v", ticks = 10, valueText = "L" })
   Theme.meter(878, 430, 28, 110, 0.72, { orientation = "v", ticks = 10, valueText = "R", peak = 0.80 })
-  Theme.slider(920, 430, 60, 110, 0.55, { orientation = "v", label = "", color = Theme.ACCENT })
+  Theme.slider(920, 430, 32, 110, 0.55, { orientation = "v", ticks = 20, color = Theme.ACCENT })
 end
 
 function preset.onLoad()
