@@ -16,9 +16,13 @@ local KNOB_XS = { 100, 340, 580, 820 }   -- left edge of each knob
 
 -- ===== State =====
 local adsr = { a = 0.15, d = 0.30, s = 0.65, r = 0.40 }
+local curveShape = "LIN"    -- "LIN" | "EXP" | "LOG"
 local dragging = nil       -- index of knob being dragged, 1..4 or nil
 local dragStartY = 0
 local dragStartV = 0
+
+-- Curve readout hit region (top-right). Updated in paintEnvelope.
+local curveHit = { x = 0, y = 0, w = 80, h = 20 }
 
 -- Virtual parameters this widget writes (downstream synths read these)
 local PARAM_A, PARAM_D, PARAM_S, PARAM_R = 1, 2, 3, 4
@@ -26,6 +30,21 @@ local PARAM_A, PARAM_D, PARAM_S, PARAM_R = 1, 2, 3, 4
 local envControl = controls.get(1)
 
 -- ===== Curve =====
+-- Interpolate a segment from (x0,y0) to (x1,y1) with the selected curve
+-- shape, emitting `segs` intermediate points. t=0 at start, 1 at end.
+local function shape(t)
+  if curveShape == "EXP" then return t * t
+  elseif curveShape == "LOG" then return math.sqrt(t)
+  else return t end
+end
+
+local function addSegment(pts, x0, y0, x1, y1, segs)
+  for i = 1, segs do
+    local t = i / segs
+    pts[#pts + 1] = { x0 + (x1 - x0) * t, y0 + (y1 - y0) * shape(t) }
+  end
+end
+
 local function envelopePoints()
   local a, d, s, r = adsr.a, adsr.d, adsr.s, adsr.r
   local hold = 0.20
@@ -34,13 +53,13 @@ local function envelopePoints()
   local tA = a / total
   local tD = (a + d) / total
   local tS = (a + d + hold) / total
-  return {
-    {0.00, 0.00},
-    {tA,   1.00},
-    {tD,   s},
-    {tS,   s},
-    {1.00, 0.00},
-  }
+
+  local pts = { {0, 0} }
+  addSegment(pts, 0,  0, tA, 1,   14)
+  addSegment(pts, tA, 1, tD, s,   14)
+  pts[#pts + 1] = { tS, s }               -- sustain hold = straight
+  addSegment(pts, tS, s, 1,  0,   14)
+  return pts
 end
 
 local function ms(v)
@@ -106,15 +125,29 @@ function paintEnvelope(control)
     })
   end
 
-  -- Mode metadata top-right
-  Theme.readout(W - 220, 12, { label = "CURVE",  value = "EXP",    color = Theme.TEXT_DIM })
-  Theme.readout(W - 120, 12, { label = "RETRIG", value = "LEGATO", color = Theme.TEXT_DIM })
+  -- Curve-shape selector (touch-cycle between LIN / EXP / LOG)
+  curveHit.x = W - 110
+  curveHit.y = 6
+  Theme.readout(curveHit.x, curveHit.y, {
+    label = "CURVE (tap to cycle)",
+    value = curveShape,
+    color = Theme.ACCENT,
+  })
 end
 
 -- ===== Touch =====
--- Drag vertically on a knob to change its value. Up = increase.
+-- Drag vertically on a knob to change its value. Tap CURVE to cycle shape.
 function touchEnvelope(control, event)
   if event.type == DOWN then
+    -- Curve selector tap
+    if event.x >= curveHit.x and event.x <= curveHit.x + curveHit.w
+       and event.y >= curveHit.y and event.y <= curveHit.y + 28 then
+      if curveShape == "LIN" then curveShape = "EXP"
+      elseif curveShape == "EXP" then curveShape = "LOG"
+      else curveShape = "LIN" end
+      control:repaint()
+      return
+    end
     local k = hitKnob(event.x, event.y)
     if k then
       dragging = k
