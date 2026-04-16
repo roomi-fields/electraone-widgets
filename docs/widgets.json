@@ -2,7 +2,7 @@
   {
     "slug": "comp-meter",
     "name": "Compressor Meter",
-    "description": "Three-column vertical VU (In / Gain Reduction / Out) with a horizontal threshold line on the input column. Four knobs below control the compressor: threshold, ratio (exp-mapped to 1:1..20:1), attack and release. GR is computed client-side from the input level + settings — no external sidechain plugin needed. A simulated input envelope animates the meters at 25 Hz in the emulator, so the widget demos cleanly without a DAW.",
+    "description": "Three-column vertical VU (In / Gain Reduction / Out) with a horizontal threshold line on the input column. Four knobs below control the compressor: threshold, ratio (exp-mapped to 1:1..20:1), attack and release. GR is computed client-side from the input level + settings — no external sidechain plugin needed. A simulated input envelope animates the meters at 25 Hz, so the widget demos cleanly without a DAW.",
     "previewExt": "png"
   },
   {
@@ -16,6 +16,12 @@
     "name": "EG Template — 7-variant Envelope Generator",
     "description": "A versatile envelope generator built on the MK2's native 4-stage envelope tile (`dx7envelope`), re-rendered dynamically by Lua to present **7 selectable envelope types** from a single control: AD, AR, ADS, ADSR, AHDSR, DADSR, ADBSSR (plus an 8th hidden ALDSDSR variant in the slot table). Seven faders on CCs 11–17 provide the real MIDI output; the list tile triggers `setEG()` which reshapes labels and visibility of the layout on the fly.",
     "previewExt": "png"
+  },
+  {
+    "slug": "eq-3band",
+    "name": "3-Band EQ",
+    "description": "Three-band parametric EQ — low shelf + mid peak + high shelf — with a live response curve above nine control knobs (FREQ / GAIN / Q per band). Drag any knob or turn pots 1-6 on the MK2 to reshape the curve; the graph redraws instantly because the magnitude response is computed in Lua (no biquad processing, just Gaussian / sigmoid approximations in log-frequency space that read as a convincing EQ curve).",
+    "previewExt": null
   },
   {
     "slug": "gallery-primitives",
