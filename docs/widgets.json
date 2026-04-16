@@ -78,6 +78,12 @@
     "previewExt": "png"
   },
   {
+    "slug": "spatial-pan",
+    "name": "Spatial Pan",
+    "description": "Top-down circular pan visualisation — the kind you'd find in a VR / ambisonic / Dolby Atmos panner. The source position is a filled dot inside a circle; four cardinal labels mark FRONT / BACK / L / R; three concentric rings at 25/50/75 % give distance cues. Drag anywhere in the circle to move the source; an L/R equal-power pan law drives two level bars on the right panel so the readouts always match what a stereo fold-down would sound like.",
+    "previewExt": "png"
+  },
+  {
     "slug": "theme-gallery",
     "name": "Theme Gallery",
     "description": "Draws all Theme palette entries (neutrals + accents), the `Theme.card(…)` primitive, line weights, and typography samples in a single custom tile.",
