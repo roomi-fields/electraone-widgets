@@ -84,6 +84,12 @@
     "previewExt": "png"
   },
   {
+    "slug": "step-seq-16",
+    "name": "32-Step Sequencer (2 × 16)",
+    "description": "Two parallel 16-step drum-machine lanes running at the same tempo. Each cell carries an independent velocity (tap to toggle full/zero, drag vertically for fractional). A bright playhead traces the active step through every **live** row — LINE 2 can be muted via its own toggle, in which case its row greys out and the playhead skips it entirely so you see at a glance it's not being traversed.",
+    "previewExt": "png"
+  },
+  {
     "slug": "theme-gallery",
     "name": "Theme Gallery",
     "description": "Draws all Theme palette entries (neutrals + accents), the `Theme.card(…)` primitive, line weights, and typography samples in a single custom tile.",

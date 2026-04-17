@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "id": "step-seq-16",
+  "name": "16-Step Sequencer",
+  "description": "Single-lane 16-step velocity grid with BPM / swing / run transport — single custom tile",
+  "targetDevice": "mk2",
+  "lua": "",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Local",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "step-seq-16-main",
+      "reference": 1,
+      "slotId": 1,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "16-Step Sequencer",
+      "categoryId": "control",
+      "values": [
+        { "message": { "type": "virtual", "deviceId": 1, "parameterNumber": 99 } }
+      ],
+      "visible": true
+    }
+  ],
+  "pages": [
+    { "id": 1, "name": "Page 1" }
+  ],
+  "categories": [],
+  "firstPageId": 1
+}

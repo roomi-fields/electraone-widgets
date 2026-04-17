@@ -1291,7 +1291,7 @@ async function loadWidget(slug) {
     const themeCode = await (await fetch(`${RAW_BASE}/lib/theme.lua`)).text();
     await runLuaAsGlobal(L, themeCode, "Theme");
     // Attach each primitive as Theme.<name>
-    const primitives = ["knob", "bar", "led", "meter", "slider", "readout", "graph", "grid"];
+    const primitives = ["knob", "bar", "led", "meter", "slider", "readout", "graph", "grid", "button"];
     for (const p of primitives) {
       try {
         const code = await (await fetch(`${RAW_BASE}/lib/primitives/${p}.lua`)).text();
