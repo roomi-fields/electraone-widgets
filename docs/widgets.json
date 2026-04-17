@@ -3,7 +3,7 @@
     "slug": "arp-viz",
     "name": "Arp Viz",
     "description": "A scrolling piano-roll view of a running arpeggiator. Notes slide left across a 3-octave pitch window (C3..C6) as time advances — the right edge is the playhead (where new notes appear) and the left edge is the oldest visible note (~3.5 s back). The widget generates its own notes internally from a fixed demo chord + rate + pattern, so it looks alive without any MIDI input.",
-    "previewExt": null
+    "previewExt": "png"
   },
   {
     "slug": "comp-meter",
@@ -94,6 +94,12 @@
     "name": "32-Step Sequencer (2 × 16)",
     "description": "Two parallel 16-step drum-machine lanes running at the same tempo. Each cell carries an independent velocity (tap to toggle full/zero, drag vertically for fractional). A bright playhead traces the active step through every **live** row — LINE 2 can be muted via its own toggle, in which case its row greys out and the playhead skips it entirely so you see at a glance it's not being traversed.",
     "previewExt": "png"
+  },
+  {
+    "slug": "tape-meter",
+    "name": "Tape Meter",
+    "description": "A mastering-studio-style LUFS + True-Peak meter pair, with peak-hold, colour-zoned fills, and three preset targets (STREAMING −14, BROADCAST −23, LIVE −16). Two vertical bars on the left; a stats panel on the right shows the big current numbers plus Integrated LUFS, Max short-term LUFS, LUFS Range (LRA) and max True-Peak. Three SSL-tile console buttons drive transport: MODE cycles targets, RESET zeroes accumulators, HOLD freezes the peak-hold ticks.",
+    "previewExt": null
   },
   {
     "slug": "theme-gallery",

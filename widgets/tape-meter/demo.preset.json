@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 2,
+  "id": "tape-meter",
+  "name": "Tape Meter",
+  "description": "LUFS + True-Peak mastering meter with peak-hold and mode presets — single custom tile",
+  "targetDevice": "mk2",
+  "lua": "",
+  "devices": [
+    {
+      "id": 1,
+      "name": "Local",
+      "port": 1,
+      "channel": 1
+    }
+  ],
+  "tiles": [
+    {
+      "id": "tape-meter-main",
+      "reference": 1,
+      "slotId": 1,
+      "type": "custom",
+      "deviceId": 1,
+      "color": "FFFFFF",
+      "name": "Tape Meter",
+      "categoryId": "control",
+      "values": [
+        { "message": { "type": "virtual", "deviceId": 1, "parameterNumber": 99 } }
+      ],
+      "visible": true
+    }
+  ],
+  "pages": [
+    { "id": 1, "name": "Page 1" }
+  ],
+  "categories": [],
+  "firstPageId": 1
+}
