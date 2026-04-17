@@ -9,6 +9,22 @@
 
 local Theme = {}
 
+-- ========== Version ==========
+-- Widgets declare which Theme version they were written against via
+--   Theme.require("0.3")
+-- at the top of their widget.lua. Bumps to this number signal a breaking
+-- change in the palette, primitive APIs, or both — widgets pinned to an
+-- older version should be audited before they render on the new Theme.
+Theme.VERSION = "0.3"
+
+function Theme.require(expected)
+  if Theme.VERSION ~= expected then
+    error(string.format(
+      "This widget was written for Theme v%s but the loaded Theme is v%s — review widget.lua for API changes.",
+      tostring(expected), tostring(Theme.VERSION)))
+  end
+end
+
 -- ========== Colour conversion ==========
 -- Native MK2 colours are 16-bit RGB565. Convert from 8-bit components or
 -- from a 0xRRGGBB integer.

@@ -7,6 +7,8 @@
 -- Paste lib/theme.lua + lib/primitives/{grid,knob,led}.lua above this
 -- code on the device. The emulator pre-loads them.
 
+Theme.require("0.3")
+
 -- ===== Geometry =====
 local GRID_X, GRID_Y, GRID_W, GRID_H = 20, 60, 976, 280
 local CELL_GAP = 4

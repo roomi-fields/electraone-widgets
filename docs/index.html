@@ -9,28 +9,79 @@
 <body>
 <header>
   <h1>Electra One Widgets</h1>
-  <p>A community library of custom Lua widgets for the
-    <a href="https://electra.one">Electra One</a> MIDI controller.</p>
+  <p>A library of custom Lua widgets for the
+    <a href="https://electra.one">Electra One</a> MIDI controller —
+    a curated <em>design system</em> built from a shared theme + reusable primitives,
+    alongside <em>community ports</em> of widgets shared on the forum.</p>
   <p><a href="https://github.com/roomi-fields/electraone-widgets">GitHub</a> ·
+     <a href="emulator/">Browser emulator</a> ·
      <a href="https://github.com/roomi-fields/electraone-widgets/blob/main/CONTRIBUTING.md">Contribute a widget</a></p>
 </header>
-<main id="grid"></main>
+<main id="main">
+  <section data-family="design-system">
+    <h2 class="section-title">Design System</h2>
+    <p class="section-blurb">Original widgets built on <code>lib/theme.lua</code> + <code>lib/primitives/</code>. Shared palette, RGB565-safe, MK2-native 1016×560.</p>
+    <div class="grid"></div>
+  </section>
+  <section data-family="community">
+    <h2 class="section-title">Community ports</h2>
+    <p class="section-blurb">Widgets shared by the Electra One community, collected here with attribution. See each README for the original author and source.</p>
+    <div class="grid"></div>
+  </section>
+</main>
+<div id="preview-modal" class="modal" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-frame">
+    <button class="modal-close" aria-label="Close preview">×</button>
+    <div class="modal-title"></div>
+    <iframe class="modal-iframe" src="about:blank" title="Widget preview"></iframe>
+  </div>
+</div>
 <script>
 fetch("widgets.json").then(r => r.json()).then(ws => {
-  const grid = document.getElementById("grid");
+  const grids = {
+    "design-system": document.querySelector('section[data-family="design-system"] .grid'),
+    "community":    document.querySelector('section[data-family="community"] .grid'),
+  };
   ws.forEach(w => {
-    const card = document.createElement("a");
+    const grid = grids[w.family] || grids["community"];
+    const card = document.createElement("article");
     card.className = "card";
-    card.href = `https://github.com/roomi-fields/electraone-widgets/tree/main/widgets/${w.slug}`;
     const img = w.previewExt
-      ? `<img src="previews/${w.slug}.${w.previewExt}" alt="${w.name}">`
+      ? `<img src="previews/${w.slug}.${w.previewExt}" alt="${w.name}" data-slug="${w.slug}" data-name="${w.name.replace(/"/g, '&quot;')}" class="preview-trigger">`
       : `<div class="noimg">no preview yet</div>`;
     card.innerHTML = `
       ${img}
       <h2>${w.name}</h2>
-      <p>${w.description}</p>`;
+      <p>${w.description}</p>
+      <div class="card-actions">
+        <a class="btn btn-primary" href="emulator/?w=${w.slug}">Try in emulator →</a>
+        <a class="btn btn-secondary" href="https://github.com/roomi-fields/electraone-widgets/tree/main/widgets/${w.slug}">Source</a>
+      </div>`;
     grid.appendChild(card);
   });
+
+  // Modal live-preview wiring
+  const modal = document.getElementById("preview-modal");
+  const iframe = modal.querySelector(".modal-iframe");
+  const titleEl = modal.querySelector(".modal-title");
+  const open = (slug, name) => {
+    titleEl.textContent = name;
+    iframe.src = `emulator/?w=${slug}`;
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+  };
+  const close = () => {
+    modal.hidden = true;
+    iframe.src = "about:blank";
+    document.body.style.overflow = "";
+  };
+  document.addEventListener("click", e => {
+    const trig = e.target.closest(".preview-trigger");
+    if (trig) { open(trig.dataset.slug, trig.dataset.name); return; }
+    if (e.target.closest(".modal-close, .modal-backdrop")) close();
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
 });
 </script>
 </body>

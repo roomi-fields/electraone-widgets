@@ -28,9 +28,3 @@ host:setPotCallback(function(c, v)  W.pot(c, v)  end)
 ## MIDI mapping
 
 <What messages does it send/receive?>
-
-## Tested on
-
-- [ ] Electra One MK2
-- [ ] Electra One Mini
-- [ ] Web simulator

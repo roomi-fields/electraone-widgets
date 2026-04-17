@@ -9,6 +9,8 @@
 -- Paste lib/theme.lua + lib/primitives/{knob,graph,readout}.lua above
 -- this code on the device. The emulator pre-loads them.
 
+Theme.require("0.3")
+
 -- ===== Geometry =====
 local KNOB_SIZE = 80
 local KNOB_ROW_Y = 380

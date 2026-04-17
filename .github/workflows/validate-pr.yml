@@ -1,0 +1,57 @@
+name: Validate PR
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Regenerate widgets.json
+        run: node scripts/build-index.js
+
+      - name: Fail if widgets.json is out of date
+        run: |
+          if ! git diff --quiet -- docs/widgets.json; then
+            echo "::error::docs/widgets.json is out of sync. Run 'node scripts/build-index.js' locally and commit the result."
+            git --no-pager diff -- docs/widgets.json
+            exit 1
+          fi
+
+      - name: Warn on missing preview.png for changed widgets
+        run: |
+          changed_widgets=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'widgets/*/widget.lua' | awk -F/ '{print $2}' | sort -u)
+          missing=0
+          for slug in $changed_widgets; do
+            [ -z "$slug" ] && continue
+            if [ ! -f "widgets/$slug/preview.png" ]; then
+              echo "::warning file=widgets/$slug/widget.lua::widgets/$slug has no preview.png — run 'node scripts/screenshot.mjs $slug' locally and commit the result."
+              missing=1
+            fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "::notice::Preview regeneration instructions are in CONTRIBUTING.md §Local-first dev workflow."
+          fi
+
+      - name: Validate design-system preset bundles
+        run: |
+          for slug in modern-adsr comp-meter eq-3band spatial-pan step-seq-16 arp-viz tape-meter gallery-primitives theme-gallery; do
+            lua_len=$(node -e "const p=require('./widgets/$slug/demo.preset.json'); process.stdout.write(String((p.lua||'').length))")
+            if [ "$lua_len" -lt 1000 ]; then
+              echo "::error file=widgets/$slug/demo.preset.json::design-system widget $slug has empty or near-empty 'lua' field ($lua_len chars) — run 'node scripts/bundle-preset.js --all' locally and commit."
+              exit 1
+            fi
+          done

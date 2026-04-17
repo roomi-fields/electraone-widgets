@@ -8,6 +8,8 @@
 -- Paste lib/theme.lua + lib/primitives/{knob,led,readout,button}.lua above
 -- this code on the device. The emulator pre-loads them.
 
+Theme.require("0.3")
+
 -- ===== Geometry =====
 local VIZ_X, VIZ_Y, VIZ_W, VIZ_H = 20, 44, 976, 320
 local FOOTER_Y = 390

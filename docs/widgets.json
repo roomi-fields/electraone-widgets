@@ -3,120 +3,140 @@
     "slug": "arp-viz",
     "name": "Arp Viz",
     "description": "A scrolling piano-roll view of a running arpeggiator. Notes slide left across a 3-octave pitch window (C3..C6) as time advances — the right edge is the playhead (where new notes appear) and the left edge is the oldest visible note (~3.5 s back). The widget generates its own notes internally from a fixed demo chord + rate + pattern, so it looks alive without any MIDI input.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "design-system"
   },
   {
     "slug": "comp-meter",
     "name": "Compressor Meter",
     "description": "Three-column vertical VU (In / Gain Reduction / Out) with a horizontal threshold line on the input column. Four knobs below control the compressor: threshold, ratio (exp-mapped to 1:1..20:1), attack and release. GR is computed client-side from the input level + settings — no external sidechain plugin needed. A simulated input envelope animates the meters at 25 Hz, so the widget demos cleanly without a DAW.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "design-system"
   },
   {
     "slug": "cube-lfo",
     "name": "Cube LFO",
     "description": "Draws a rotating 3D cube and tracks the projected (X, Y) position of one vertex, sending those coordinates as outbound CC messages every 20 ms. Two faders control the X/Y angular speed (exponential curve, max ≈0.2 rad/tick); two list pickers re-map the outbound CC numbers on the fly. A pure custom-paint demo — the cube lives entirely inside the Lua timer loop.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "eg-template",
     "name": "EG Template — 7-variant Envelope Generator",
     "description": "A versatile envelope generator built on the MK2's native 4-stage envelope tile (`dx7envelope`), re-rendered dynamically by Lua to present **7 selectable envelope types** from a single control: AD, AR, ADS, ADSR, AHDSR, DADSR, ADBSSR (plus an 8th hidden ALDSDSR variant in the slot table). Seven faders on CCs 11–17 provide the real MIDI output; the list tile triggers `setEG()` which reshapes labels and visibility of the layout on the fly.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "eq-3band",
     "name": "3-Band EQ",
     "description": "Three-band parametric EQ — low shelf + mid peak + high shelf — with a live response curve above nine control knobs (FREQ / GAIN / Q per band). Drag any knob or turn pots 1-6 on the MK2 to reshape the curve; the graph redraws instantly because the magnitude response is computed in Lua (no biquad processing, just Gaussian / sigmoid approximations in log-frequency space that read as a convincing EQ curve).",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "design-system"
   },
   {
     "slug": "gallery-primitives",
     "name": "Primitives Gallery",
     "description": "Draws all primitives currently implemented (knob, bar, led) with multiple states, plus a composition sample showing how they stack into a \"filter card\" and \"drive card\" panel.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "design-system"
   },
   {
     "slug": "loopop-tombola",
     "name": "Loopop's Tombola",
     "description": "OP-1-style physics sequencer: up to 6 coloured balls bounce inside a rotating hexagonal (or 3–12 sided) container, triggering MIDI notes when they hit a wall. Each wall plays a note from one of 13 built-in scales; CCs control gravity, wall bounciness, rotation, spawn rate and ball lifespan. Note-on/note-off messages are sent on MIDI port 1 + port 2 (USB + 3.5 mm jack), channel 1.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "lua-xy-pad",
     "name": "[Lua] XY Pad",
     "description": "Reference XY-pad demo showing how to wire `paint`, `touch` and `pot` callbacks on a single Custom control. Touch the pad to drag a crosshair + circle marker; an assigned pot nudges X by its delta. Deliberately MIDI-free — the point is to demonstrate the callback surface, not send data.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "metronomes",
     "name": "Metronomes",
     "description": "Six independent bouncing balls (one per row) act as visual metronomes. Each ball has its own channel/note/speed/left-velocity/right-velocity; when a ball hits a wall it fires a MIDI `noteOn`/`noteOff`. A master `START` pad, a `reset` pad and a logarithmic `global speed` slider (×0.1 at 1, ×1 at 50, ×10 at 100) drive the whole set. Tick rate 20 ms.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "midi-multi-env",
     "name": "MIDI multi env",
     "description": "Multi-stage envelope editor with two modes: an 8-point **Wave** envelope (with key-on / key-off loop regions and a sustain segment) and a 4-point **Free** envelope (bipolar levels). Points are selected and dragged directly on the canvas; a stage-index fader plus Time/Level faders give pot-based editing. On edit the widget constructs a Waldorf-style SysEx packet (`{0x3E, 0x0E, devId, 0x20, bufNum, hh, pp, midiValue}`) — send is currently commented out, so wire `midi.sendSysex` back in for your own target.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "mini-cube-lfo",
     "name": "Mini Cube LFO",
     "description": "Compact variant of the full `cube-lfo` widget — same wireframe cube and exponential-speed LFO, but sized for a single page slot (360×280). Two faders set X/Y angular speed; the tracked vertex's projected position is emitted as CC1/CC2 every 20 ms. Starts with a slow horizontal spin by default (`stepX = 0.01`).",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "modern-adsr",
     "name": "Modern ADSR",
     "description": "A flat/modern replacement for the native `dx7envelope` tile. Renders a live ADSR envelope curve with filled area, grid, and value readouts under it; the four parameters are driven by native CC7 faders so any synth patch can wire them.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "design-system"
   },
   {
     "slug": "multi-env-encoders",
     "name": "multi env encoders",
     "description": "Six-point envelope editor driven entirely through encoders (pot 6 = active point, pot 10 = X/time, pot 11 = Y/level) plus touch drag on the canvas. On every edit the widget fills a Waldorf-style SysEx packet `{0x3E, 0x0E, devId, 0x20, bufNum, hh, pp, midiValue}` — send is commented out by default. Intended as a stripped-down, touch + encoder-only sibling of `midi-multi-env`.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "send-lfo",
     "name": "Send LFO",
     "description": "Free-running LFO with a built-in oscilloscope. Generates sawtooth / square / triangle / sine simultaneously from a single phase accumulator, ships the triangle output through an inter-preset `pipe` named `\"output\"`, and draws the live signal on a 314×140 scope canvas. Rate is exponential (0.1 Hz at 0% → 10 Hz at 100%, cubic curve). `RUN` / `STOP` pads start and stop the timer; `Rate` / `Phase` / `Amplitude` / `Pulse Width` shape the wave.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "spatial-pan",
     "name": "Spatial Pan",
     "description": "Top-down circular pan visualisation — the kind you'd find in a VR / ambisonic / Dolby Atmos panner. The source position is a filled dot inside a circle; four cardinal labels mark FRONT / BACK / L / R; three concentric rings at 25/50/75 % give distance cues. Drag anywhere in the circle to move the source; an L/R equal-power pan law drives two level bars on the right panel so the readouts always match what a stereo fold-down would sound like.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "design-system"
   },
   {
     "slug": "step-seq-16",
     "name": "32-Step Sequencer (2 × 16)",
     "description": "Two parallel 16-step drum-machine lanes running at the same tempo. Each cell carries an independent velocity (tap to toggle full/zero, drag vertically for fractional). A bright playhead traces the active step through every **live** row — LINE 2 can be muted via its own toggle, in which case its row greys out and the playhead skips it entirely so you see at a glance it's not being traversed.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "design-system"
   },
   {
     "slug": "tape-meter",
     "name": "Tape Meter",
     "description": "A mastering-studio-style LUFS + True-Peak meter pair, with peak-hold, colour-zoned fills, and three preset targets (STREAMING −14, BROADCAST −23, LIVE −16). Two vertical bars on the left; a stats panel on the right shows the big current numbers plus Integrated LUFS, Max short-term LUFS, LUFS Range (LRA) and max True-Peak. Three SSL-tile console buttons drive transport: MODE cycles targets, RESET zeroes accumulators, HOLD freezes the peak-hold ticks.",
-    "previewExt": null
+    "previewExt": "png",
+    "family": "design-system"
   },
   {
     "slug": "theme-gallery",
     "name": "Theme Gallery",
     "description": "Draws all Theme palette entries (neutrals + accents), the `Theme.card(…)` primitive, line weights, and typography samples in a single custom tile.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "design-system"
   },
   {
     "slug": "xt-envelopes",
     "name": "XT Envelopes — Custom envelope editor",
     "description": "A custom control demonstrating the `paint` / `touch` / `pot` callback system on the Electra One MK2. Implements two envelope modes (`WAVE` 8-point with key-on/key-off loops, `FREE` 4-point bipolar) with active-point editing, colour-coded stages and touch dragging. The author's stated intent is **pedagogical** — showcase the Custom control type without MIDI plumbing. It's the same envelope canvas as `midi-multi-env`, without the SysEx target.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   },
   {
     "slug": "xypad",
     "name": "XY Pad",
     "description": "Minimal two-axis touch pad. Touching or dragging on the canvas updates two normalised values (0..1, origin bottom-left) and writes them as `PT_VIRTUAL` parameters 1 and 2 scaled to 0-127, so you can wire them to any MIDI message (CC, NRPN, SysEx, …) via the preset's parameter map.",
-    "previewExt": "png"
+    "previewExt": "png",
+    "family": "community"
   }
 ]

@@ -11,6 +11,8 @@
 -- Paste lib/theme.lua + lib/primitives/{bar}.lua above this code on the
 -- device. The emulator pre-loads them.
 
+Theme.require("0.3")
+
 -- ===== Geometry =====
 local CIRCLE_CX, CIRCLE_CY = 320, 280
 local CIRCLE_R = 230

@@ -11,6 +11,18 @@ const DOCS = path.join(ROOT, "docs");
 const PREVIEWS = path.join(DOCS, "previews");
 const EXTS = ["png", "jpg", "jpeg", "webp", "svg"];
 
+const DESIGN_SYSTEM = new Set([
+  "modern-adsr",
+  "comp-meter",
+  "eq-3band",
+  "spatial-pan",
+  "step-seq-16",
+  "arp-viz",
+  "tape-meter",
+  "gallery-primitives",
+  "theme-gallery",
+]);
+
 fs.mkdirSync(PREVIEWS, { recursive: true });
 
 const entries = fs.readdirSync(WIDGETS, { withFileTypes: true })
@@ -41,7 +53,8 @@ const entries = fs.readdirSync(WIDGETS, { withFileTypes: true })
         break;
       }
     }
-    return { slug, name, description, previewExt };
+    const family = DESIGN_SYSTEM.has(slug) ? "design-system" : "community";
+    return { slug, name, description, previewExt, family };
   });
 
 fs.writeFileSync(

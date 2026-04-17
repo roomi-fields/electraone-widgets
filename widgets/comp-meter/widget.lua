@@ -10,6 +10,8 @@
 -- Paste lib/theme.lua + lib/primitives/{meter,knob}.lua above this code
 -- on the device. The emulator pre-loads them.
 
+Theme.require("0.3")
+
 -- ===== Geometry =====
 local METER_W      = 72
 local METER_H      = 300

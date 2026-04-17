@@ -1,6 +1,8 @@
 -- Widget: Primitives Gallery
 -- Dev reference — renders every primitive so the API can be QA'd visually.
 
+Theme.require("0.3")
+
 local c = controls.get(1)
 
 -- Sample envelope points for the graph showcase (AD → S → R curve)

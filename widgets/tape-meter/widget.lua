@@ -9,6 +9,8 @@
 -- Paste lib/theme.lua + lib/primitives/{meter,readout,button}.lua above
 -- this code on the device. The emulator pre-loads them.
 
+Theme.require("0.3")
+
 -- ===== Geometry =====
 local METER_Y, METER_H = 60, 340
 local LUFS = { x = 90,  w = 70, label = "LUFS", unit = "LUFS" }

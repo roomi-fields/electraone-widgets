@@ -2,6 +2,8 @@
 -- Dev reference — visualises the whole Theme palette + sample typography.
 -- Paste lib/theme.lua at top for device deployment; the emulator pre-loads it.
 
+Theme.require("0.3")
+
 local c = controls.get(1)
 
 -- Palette rows

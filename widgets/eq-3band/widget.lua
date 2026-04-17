@@ -12,6 +12,8 @@
 -- Paste lib/theme.lua + lib/primitives/{graph,knob}.lua above this code
 -- on the device. The emulator pre-loads them.
 
+Theme.require("0.3")
+
 -- ===== Geometry =====
 local GRAPH_X, GRAPH_Y, GRAPH_W, GRAPH_H = 20, 30, 976, 280
 local CARD_Y, CARD_H = 330, 210
