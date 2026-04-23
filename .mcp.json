@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "rtfm": {
+      "command": "/home/romi/.local/share/pipx/venvs/rtfm-ai/bin/python",
+      "args": [
+        "-m",
+        "rtfm.mcp"
+      ],
+      "env": {
+        "RTFM_DB": ".rtfm/library.db"
+      }
+    }
+  }
+}

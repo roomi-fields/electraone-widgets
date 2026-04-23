@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/romi/.local/share/pipx/venvs/rtfm-ai/bin/python \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/rtfm_sync.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/romi/.local/share/pipx/venvs/rtfm-ai/bin/python \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/rtfm_stop_sync.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

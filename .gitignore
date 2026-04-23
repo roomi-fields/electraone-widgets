@@ -3,3 +3,6 @@ node_modules/
 docs/previews/
 docs/lib
 docs/widgets
+
+# RTFM local database
+.rtfm/
