@@ -19,6 +19,7 @@ const DESIGN_SYSTEM = new Set([
   "step-seq-16",
   "arp-viz",
   "tape-meter",
+  "note-list-16",
   "gallery-primitives",
   "theme-gallery",
 ]);

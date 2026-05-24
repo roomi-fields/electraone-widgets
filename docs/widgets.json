@@ -91,6 +91,13 @@
     "family": "community"
   },
   {
+    "slug": "note-list-16",
+    "name": "16-Step Note List (×3 lanes)",
+    "description": "A reusable 16-step custom control inspired by the Waldorf Q-style arpeggiator / step-list editor. Each lane is one row of 16 cells, **grouped by 4** with thicker dividers, displaying values in-cell (note names, raw values, or `%`). A common **RANGE** parameter dims/hides the steps past the active pattern length so you can shorten without losing your edits.",
+    "previewExt": "png",
+    "family": "design-system"
+  },
+  {
     "slug": "send-lfo",
     "name": "Send LFO",
     "description": "Free-running LFO with a built-in oscilloscope. Generates sawtooth / square / triangle / sine simultaneously from a single phase accumulator, ships the triangle output through an inter-preset `pipe` named `\"output\"`, and draws the live signal on a 314×140 scope canvas. Rate is exponential (0.1 Hz at 0% → 10 Hz at 100%, cubic curve). `RUN` / `STOP` pads start and stop the timer; `Rate` / `Phase` / `Amplitude` / `Pulse Width` shape the wave.",

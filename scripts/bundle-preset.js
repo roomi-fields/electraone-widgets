@@ -17,7 +17,7 @@ const WIDGETS = path.join(ROOT, "widgets");
 
 const DESIGN_SYSTEM = [
   "modern-adsr", "comp-meter", "eq-3band", "spatial-pan",
-  "step-seq-16", "arp-viz", "tape-meter",
+  "step-seq-16", "arp-viz", "tape-meter", "note-list-16",
   "gallery-primitives", "theme-gallery",
 ];
 
