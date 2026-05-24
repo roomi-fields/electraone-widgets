@@ -1,76 +1,36 @@
--- Widget: 16-Step Note List (×3 lanes)
--- A reusable 16-step custom control inspired by the Waldorf Q-style arp /
--- step list. Each lane is the same primitive — one row of 16 cells, grouped
--- every 4 by a vertical divider, with a common RANGE that dims/hides the
--- steps past the active length. The demo stacks 3 lanes (NOTES / VELOCITY /
--- GATE %) to show the same widget being instantiated multiple times on a
--- single screen, sharing the RANGE control.
+-- Widget: 16-Step Note List — Waldorf Q-style reusable step list
+-- One row of 16 cells, grouped every 4 with a thin BORDER tick. Values
+-- are drawn directly inside each cell (no fader bars). Each instance is
+-- a single custom tile, driven by two dedicated encoders: one for step
+-- selection, one for value editing. A common RANGE virtual parameter is
+-- shared between instances — out-of-range steps darken without losing
+-- their stored value.
 --
--- Layout target: one lane occupies the equivalent of a 6×1 tile slot
--- (~1012 × 90px). Three lanes + a common header + a footer hint = full page.
+-- This widget.lua is a *factory*. The demo instantiates it twice
+-- (NOTES on ENC 1+2, VELOCITY on ENC 3+4) sharing the same RANGE.
+-- Up to 6 instances fit on a single MK2 screen, using all 12 encoders.
 --
--- Paste lib/theme.lua + lib/primitives/{readout}.lua above this code on the
--- device. The emulator pre-loads them.
+-- Paste lib/theme.lua (no primitives required) above this code on the
+-- device. The emulator pre-loads it.
 
 Theme.require("0.3")
 
--- ===== Geometry =====
-local W_PAGE, H_PAGE = 1016, 560
+-- ===== Shared state (commonRange) =====
+-- The common RANGE parameter is exposed as a virtual param (33). Multiple
+-- instances of the widget read it from this module-level table at paint
+-- time; on the device, a native knob / list bound to virtual param 33
+-- updates it via parameterMap.onChange (wired in preset.onLoad when
+-- the API is available — guarded so the emulator stub doesn't crash).
+local commonRange = { value = 11 }                  -- default trims to 11/16
+local PARAM_COMMON_RANGE = 33
+local instances = {}
 
-local LANES = 3
-local LANE_X, LANE_W = 16, 984
-local LANE_H = 110
-local LANE_GAP = 16
-local LANE_Y0 = 80                              -- below the global header
-
-local CELLS = 16
-local CELL_GAP = 2
-local GROUP_GAP_EXTRA = 12                      -- thicker space every 4 steps,
-                                                -- with a 2px BORDER tick inside
-
--- ===== State =====
--- Pre-fill with a musically suggestive default per lane so the demo reads
--- as a real arp pattern, not a flat row. Lane 1 = MIDI notes around A
--- minor, lane 2 = velocities, lane 3 = gate lengths 0..127.
-local lanes = {
-  { -- NOTES  (MIDI note number)
-    name  = "NOTES",
-    color = Theme.ACCENT,
-    kind  = "note",                              -- display = note name
-    cells = { 57, 60, 64, 67,  69, 67, 64, 60,
-              57, 60, 64, 69,  72, 69, 64, 60 },
-  },
-  { -- VELOCITY (0..127)
-    name  = "VELOCITY",
-    color = Theme.POSITIVE,
-    kind  = "num",
-    cells = { 110, 80, 95, 70,  120, 70, 90, 65,
-              100, 75, 90, 80,  127, 75, 85, 60 },
-  },
-  { -- GATE % (0..127 → 0..100%)
-    name  = "GATE %",
-    color = Theme.INFO,
-    kind  = "pct",
-    cells = { 80, 80, 80, 80,  100, 60, 80, 60,
-              90, 60, 80, 70,  120, 60, 80, 60 },
-  },
-}
-
-local range        = 16     -- common to all lanes — 1..16
-local selectedLane = 1      -- which lane the value pot edits
-local selectedStep = 1      -- which step is highlighted
-
--- Virtual parameters: 1..16 = lane1, 17..32 = lane2, 33..48 = lane3, 49 = range
-local PARAM_RANGE = 49
-
-local function paramFor(laneIdx, stepIdx)
-  return (laneIdx - 1) * 16 + stepIdx
+local function setCommonRange(newValue)
+  commonRange.value = math.max(1, math.min(16, newValue))
+  for _, inst in ipairs(instances) do inst.repaint() end
 end
 
-local mainControl = controls.get(1)
-
 -- ===== Helpers =====
-
 local NOTE_NAMES = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }
 
 local function noteName(n)
@@ -81,252 +41,213 @@ end
 
 local function formatCell(kind, v)
   if kind == "note" then return noteName(v)
-  elseif kind == "pct" then return string.format("%d%%", math.floor(v * 100 / 127 + 0.5))
-  else return tostring(v) end
+  elseif kind == "pct"  then return string.format("%d%%", math.floor(v * 100 / 127 + 0.5))
+  else                       return tostring(v) end
 end
 
--- Map a step index 1..16 to the on-screen x of its left edge inside the
--- lane, accounting for the extra spacing every 4 steps.
-local function stepGeometry(laneX, laneW)
-  local groups = 4                                          -- 4 groups of 4
-  local extra = GROUP_GAP_EXTRA * (groups - 1)              -- 3 dividers
-  local innerW = laneW - extra
-  local cellW = (innerW - CELL_GAP * (CELLS - 1)) / CELLS
+-- ===== Factory =====
 
-  local function xOf(stepIdx)
-    local groupIdx = math.floor((stepIdx - 1) / 4)
-    local intra = (stepIdx - 1) * (cellW + CELL_GAP)
-    return laneX + intra + groupIdx * GROUP_GAP_EXTRA
+local function makeNoteList(control, opts)
+  opts = opts or {}
+  local name      = opts.name or "STEPS"
+  local color     = opts.color or Theme.ACCENT
+  local kind      = opts.kind or "note"
+  local cells     = opts.cells or { 60, 62, 64, 65, 67, 69, 71, 72,
+                                    60, 62, 64, 65, 67, 69, 71, 72 }
+  local paramBase = opts.paramBase or 0
+  local encSelect = opts.encSelect or 1
+  local encEdit   = opts.encEdit or 2
+
+  local selectedStep = 1
+  local dragging = nil
+
+  local CELLS = 16
+  local CELL_GAP = 2
+  local GROUP_GAP_EXTRA = 12
+
+  local function stepGeometry(x, w)
+    local extra = GROUP_GAP_EXTRA * 3                       -- 3 dividers
+    local innerW = w - extra
+    local cellW = (innerW - CELL_GAP * (CELLS - 1)) / CELLS
+    local function xOf(i)
+      local g = math.floor((i - 1) / 4)
+      return x + (i - 1) * (cellW + CELL_GAP) + g * GROUP_GAP_EXTRA
+    end
+    return cellW, xOf
   end
-  return cellW, xOf
-end
 
-local function laneRectY(laneIdx)
-  return LANE_Y0 + (laneIdx - 1) * (LANE_H + LANE_GAP)
-end
+  local function paint(ctrl)
+    local b = ctrl:getBounds()
+    local W, H = b[WIDTH], b[HEIGHT]
+    Theme.card(0, 0, W, H)
 
--- ===== Paint a single lane =====
+    -- Header — name + encoder assignment on the left
+    graphics.setColor(Theme.TEXT)
+    graphics.drawText(10, 6, name)
+    local encStr = string.format("ENC %d+%d", encSelect, encEdit)
+    graphics.setColor(Theme.NEUTRAL_ACCENT)
+    graphics.drawText(10 + #name * 6 + 14, 6, encStr)
 
-local function paintLane(laneIdx)
-  local lane = lanes[laneIdx]
-  local ly = laneRectY(laneIdx)
-  local lx = LANE_X
-  local lw = LANE_W
-  local lh = LANE_H
-
-  -- Lane card
-  Theme.card(lx, ly, lw, lh)
-
-  -- Lane header strip — name on the left, current value readout on the right
-  -- when this lane is the one being edited.
-  graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(lx + 10, ly + 6, lane.name)
-
-  if laneIdx == selectedLane then
-    local v = lane.cells[selectedStep]
-    local label = string.format("STEP %02d", selectedStep)
-    local valueStr = formatCell(lane.kind, v)
-    local labelW = #label * 6
+    -- Header — selected step + value on the right (live readout)
+    local v = cells[selectedStep] or 0
+    local valueStr = formatCell(kind, v)
+    local stepStr = string.format("STEP %02d", selectedStep)
     local valueW = #valueStr * 8
-    local right = lx + lw - 12
+    local stepW = #stepStr * 6
     graphics.setColor(Theme.TEXT_DIM)
-    graphics.drawText(right - valueW - 8 - labelW, ly + 8, label)
-    graphics.setColor(lane.color)
-    graphics.drawText(right - valueW, ly + 6, valueStr)
-  else
-    graphics.setColor(Theme.TEXT_DIM)
-    local hint = "edit: pot " .. tostring(laneIdx + 1)
-    graphics.drawText(lx + lw - 10 - #hint * 6, ly + 8, hint)
-  end
+    graphics.drawText(W - 10 - valueW - 10 - stepW, 8, stepStr)
+    graphics.setColor(color)
+    graphics.drawText(W - 10 - valueW, 6, valueStr)
 
-  -- Cells row
-  local cellsY = ly + 32
-  local cellsH = lh - 38
-  local cellW, xOf = stepGeometry(lx + 10, lw - 20)
+    -- Cells row
+    local cellsY = 26
+    local cellsH = H - 32
+    local cellW, xOf = stepGeometry(10, W - 20)
+    local range = commonRange.value
 
-  -- Group dividers — short vertical ticks centred in the gap between every
-  -- 4th cell. Drawn before the cells so the active-step bright outline
-  -- always wins on top.
-  for groupIdx = 1, 3 do
-    local lastCellRight = xOf(groupIdx * 4) + cellW
-    local divX = lastCellRight + GROUP_GAP_EXTRA / 2
-    graphics.setColor(Theme.BORDER)
-    graphics.drawLine(divX, cellsY + 6, divX, cellsY + cellsH - 6)
-    graphics.drawLine(divX + 1, cellsY + 6, divX + 1, cellsY + cellsH - 6)
-  end
+    -- Group dividers — 2px tick centred in the 12px gap between groups
+    for g = 1, 3 do
+      local divX = xOf(g * 4) + cellW + GROUP_GAP_EXTRA / 2
+      graphics.setColor(Theme.BORDER)
+      graphics.drawLine(divX,     cellsY + 4, divX,     cellsY + cellsH - 4)
+      graphics.drawLine(divX + 1, cellsY + 4, divX + 1, cellsY + cellsH - 4)
+    end
 
-  for i = 1, CELLS do
-    local cx = xOf(i)
-    local active = (i == selectedStep) and (laneIdx == selectedLane)
-    local inRange = (i <= range)
-    local v = lane.cells[i] or 0
-    local norm = math.max(0, math.min(1, v / 127))
+    for i = 1, CELLS do
+      local cx = xOf(i)
+      local isActive = (i == selectedStep)
+      local inRange = (i <= range)
+      local cv = cells[i] or 0
 
-    -- Background — ELEVATED on the active step (only on the selected lane),
-    -- SURFACE otherwise. Cells past the range are CANVAS so they read
-    -- "outside the pattern".
-    local bg = Theme.SURFACE
-    if not inRange then bg = Theme.CANVAS
-    elseif active then bg = Theme.ELEVATED end
-    Theme.rect(cx, cellsY, cellW, cellsH, bg)
+      -- Background: ELEVATED active, SURFACE in-range, CANVAS out-of-range
+      local bg = Theme.SURFACE
+      if not inRange then bg = Theme.CANVAS
+      elseif isActive then bg = Theme.ELEVATED end
+      Theme.rect(cx, cellsY, cellW, cellsH, bg)
 
-    if inRange then
-      -- Value indicator — a vertical bar from the bottom representing the
-      -- normalised value. Warm colour family for the lane; on the active
-      -- step the bar uses the full lane colour, otherwise dim.
-      local pad = 3
-      local barH = math.max(2, math.floor((cellsH - pad * 2 - 14) * norm))
-      local barY = cellsY + cellsH - pad - barH
-      local barColor = active and lane.color or Theme.ACCENT_DIM
-      if lane.color == Theme.POSITIVE then
-        barColor = active and Theme.POSITIVE or Theme.hex(0x3F6C53)
-      elseif lane.color == Theme.INFO then
-        barColor = active and Theme.INFO or Theme.hex(0x35567E)
+      if inRange then
+        local label = formatCell(kind, cv)
+        local lblColor = isActive and color or Theme.TEXT
+        if not isActive then lblColor = Theme.TEXT_DIM end
+        if isActive then lblColor = color end
+        graphics.setColor(lblColor)
+        local labelW = #label * 6
+        local lx = cx + math.floor((cellW - labelW) / 2)
+        local ly = cellsY + math.floor((cellsH - 10) / 2)
+        graphics.drawText(lx, ly, label)
+      else
+        graphics.setColor(Theme.NEUTRAL_ACCENT)
+        graphics.drawText(cx + cellW / 2 - 3, cellsY + cellsH / 2 - 4, "·")
       end
-      Theme.rect(cx + pad, barY, cellW - pad * 2, barH, barColor)
 
-      -- Value label inside the cell (top-aligned, small)
-      local label = formatCell(lane.kind, v)
-      local lblColor = active and Theme.TEXT or Theme.TEXT_DIM
-      graphics.setColor(lblColor)
-      graphics.drawText(cx + (cellW - #label * 6) / 2, cellsY + 3, label)
-    else
-      -- Out-of-range cell — empty body, dimmed dash
-      graphics.setColor(Theme.NEUTRAL_ACCENT)
-      graphics.drawText(cx + cellW / 2 - 3, cellsY + cellsH / 2 - 4, "·")
-    end
+      -- Outline: TEXT on active, BORDER on in-range, ELEVATED on OOR
+      local outlineCol = isActive and Theme.TEXT
+                         or (inRange and Theme.BORDER or Theme.ELEVATED)
+      Theme.outline(cx, cellsY, cellW, cellsH, outlineCol)
 
-    -- Outline — bright for the active step, dim for live, hairline for OOR
-    local outlineCol = active and Theme.TEXT
-                       or (inRange and Theme.BORDER or Theme.ELEVATED)
-    Theme.outline(cx, cellsY, cellW, cellsH, outlineCol)
-
-    -- Top edge highlight on the active step
-    if active then
-      Theme.rect(cx, cellsY, cellW, 2, Theme.TEXT)
-    end
-  end
-end
-
--- ===== Paint =====
-
-function paintMain(control)
-  Theme.clear(W_PAGE, H_PAGE)
-
-  -- Global header
-  Theme.text(LANE_X, 16, "NOTE LIST 16  ·  3 lanes share RANGE", Theme.TEXT_DIM)
-  Theme.line(LANE_X, 38, W_PAGE - LANE_X, 38, Theme.BORDER)
-
-  -- Right side: RANGE common readout (drawn direct so label aligns right too)
-  local rangeLabel = "RANGE"
-  local rangeValue = string.format("%d / 16", range)
-  local rangeLabelW = #rangeLabel * 6
-  local rangeValueW = #rangeValue * 8
-  local rangeRight = W_PAGE - 16
-  graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(rangeRight - rangeLabelW, 8, rangeLabel)
-  graphics.setColor(Theme.WARNING)
-  graphics.drawText(rangeRight - rangeValueW, 20, rangeValue)
-
-  graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(W_PAGE / 2 - 80, 16,
-    string.format("LANE %d  ·  STEP %02d", selectedLane, selectedStep))
-
-  -- 3 lanes
-  for i = 1, LANES do paintLane(i) end
-
-  -- Footer hint
-  graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(LANE_X, H_PAGE - 18,
-    "pot 1 = step  ·  pot 2/3/4 = value (notes / vel / gate)  ·  pot 5 = range  ·  pot 6 = lane select")
-end
-
--- ===== Hit-testing =====
-
-local function hitCell(x, y)
-  for laneIdx = 1, LANES do
-    local ly = laneRectY(laneIdx)
-    local cellsY = ly + 32
-    local cellsH = LANE_H - 38
-    if y >= cellsY and y <= cellsY + cellsH then
-      local cellW, xOf = stepGeometry(LANE_X + 10, LANE_W - 20)
-      for i = 1, CELLS do
-        local cx = xOf(i)
-        if x >= cx and x <= cx + cellW then
-          return laneIdx, i
-        end
+      -- Top edge highlight on the active cell
+      if isActive then
+        Theme.rect(cx, cellsY, cellW, 2, Theme.TEXT)
       end
     end
   end
-  return nil
-end
 
--- ===== Touch =====
-
-local dragging = nil
-
-function touchMain(control, event)
-  if event.type == DOWN then
-    local laneIdx, stepIdx = hitCell(event.x, event.y)
-    if laneIdx then
-      selectedLane = laneIdx
-      selectedStep = stepIdx
-      dragging = {
-        lane = laneIdx, step = stepIdx,
-        startY = event.y,
-        startV = lanes[laneIdx].cells[stepIdx] or 0,
-      }
-      control:repaint()
+  local function hitCell(eventX, eventY)
+    -- event.x / event.y arrive in tile-local coordinates from the runtime.
+    local b = control:getBounds()
+    local cellsY = 26
+    local cellsH = b[HEIGHT] - 32
+    if eventY < cellsY or eventY > cellsY + cellsH then return nil end
+    local cellW, xOf = stepGeometry(10, b[WIDTH] - 20)
+    for i = 1, CELLS do
+      local cx = xOf(i)
+      if eventX >= cx and eventX <= cx + cellW then return i end
     end
-  elseif event.type == MOVE then
-    if not dragging then return end
-    -- Vertical drag edits the value 0..127 (one pixel = ~0.6 value units;
-    -- 200px swing covers full range, matches the rest of the design system).
-    local dy = dragging.startY - event.y
-    local v = math.max(0, math.min(127, math.floor(dragging.startV + dy * 0.635 + 0.5)))
-    lanes[dragging.lane].cells[dragging.step] = v
-    parameterMap.set(1, PT_VIRTUAL, paramFor(dragging.lane, dragging.step), v)
-    control:repaint()
-  elseif event.type == UP then
-    dragging = nil
+    return nil
   end
+
+  local function touch(ctrl, event)
+    if event.type == DOWN then
+      local i = hitCell(event.x, event.y)
+      if i then
+        selectedStep = i
+        dragging = { idx = i, startY = event.y, startV = cells[i] or 0 }
+        ctrl:repaint()
+      end
+    elseif event.type == MOVE then
+      if dragging then
+        local dy = dragging.startY - event.y
+        local nv = math.max(0, math.min(127,
+                     math.floor(dragging.startV + dy * 0.635 + 0.5)))
+        cells[dragging.idx] = nv
+        parameterMap.set(1, PT_VIRTUAL, paramBase + dragging.idx, nv)
+        ctrl:repaint()
+      end
+    elseif event.type == UP then
+      dragging = nil
+    end
+  end
+
+  local function pot(ctrl, ev)
+    if ev.type ~= MOVE then return end
+    if ev.id == encSelect then
+      selectedStep = math.max(1, math.min(CELLS,
+                       selectedStep + (ev.delta > 0 and 1 or -1)))
+      ctrl:repaint()
+    elseif ev.id == encEdit then
+      local cv = cells[selectedStep] or 0
+      cv = math.max(0, math.min(127, cv + ev.delta))
+      cells[selectedStep] = cv
+      parameterMap.set(1, PT_VIRTUAL, paramBase + selectedStep, cv)
+      ctrl:repaint()
+    end
+  end
+
+  control:setPaintCallback(paint)
+  control:setTouchCallback(touch)
+  control:setPotCallback(pot)
+
+  local instance = { repaint = function() control:repaint() end }
+  table.insert(instances, instance)
+  return instance
 end
 
--- ===== Pot =====
--- Pot 1 = selected step (1..16)
--- Pot 2 = value lane 1   (notes)
--- Pot 3 = value lane 2   (velocity)
--- Pot 4 = value lane 3   (gate)
--- Pot 5 = range          (1..16, common)
--- Pot 6 = lane selector  (1..3) — useful when editing via Pot 2 isn't enough
-
-function potMain(control, potEvent)
-  if potEvent.type ~= MOVE then return end
-  local idx = potEvent.id
-  local d = potEvent.delta
-
-  if idx == 1 then
-    selectedStep = math.max(1, math.min(CELLS, selectedStep + (d > 0 and 1 or -1)))
-  elseif idx == 2 or idx == 3 or idx == 4 then
-    local laneIdx = idx - 1
-    selectedLane = laneIdx
-    local v = lanes[laneIdx].cells[selectedStep] or 0
-    v = math.max(0, math.min(127, v + d))
-    lanes[laneIdx].cells[selectedStep] = v
-    parameterMap.set(1, PT_VIRTUAL, paramFor(laneIdx, selectedStep), v)
-  elseif idx == 5 then
-    range = math.max(1, math.min(CELLS, range + (d > 0 and 1 or -1)))
-    parameterMap.set(1, PT_VIRTUAL, PARAM_RANGE, math.floor((range - 1) * 127 / 15))
-  elseif idx == 6 then
-    selectedLane = math.max(1, math.min(LANES, selectedLane + (d > 0 and 1 or -1)))
-  end
-  control:repaint()
-end
+-- ===== Boot — demo instantiates two lanes =====
 
 function preset.onLoad()
-  mainControl:setBounds({0, 0, W_PAGE, H_PAGE})
-  mainControl:setPaintCallback(paintMain)
-  mainControl:setTouchCallback(touchMain)
-  mainControl:setPotCallback(potMain)
-  mainControl:repaint()
+  -- Wire external param-33 changes → commonRange (guarded for emulator).
+  if parameterMap.onChange and parameterMap.get then
+    local ok, vo = pcall(parameterMap.get, 1, PT_VIRTUAL, PARAM_COMMON_RANGE)
+    if ok and type(vo) == "userdata" then
+      parameterMap.onChange(vo, function(valueObject, origin)
+        if origin == ORIGIN_LUA then return end
+        local v = valueObject:getValue()
+        setCommonRange(math.floor(v * 16 / 127 + 0.5))
+      end)
+    end
+  end
+
+  local ctrl1 = controls.get(1)
+  local ctrl2 = controls.get(2)
+
+  -- Tile 1 — NOTES lane, top of the page, ENC 1+2
+  ctrl1:setBounds({ 4, 30, 1008, 110 })
+  makeNoteList(ctrl1, {
+    name = "NOTES", color = Theme.ACCENT, kind = "note",
+    cells = { 57, 60, 64, 67, 69, 67, 64, 60,
+              57, 60, 64, 69, 72, 69, 64, 60 },
+    paramBase = 0, encSelect = 1, encEdit = 2,
+  })
+
+  -- Tile 2 — VELOCITY lane, middle of the page, ENC 3+4
+  ctrl2:setBounds({ 4, 160, 1008, 110 })
+  makeNoteList(ctrl2, {
+    name = "VELOCITY", color = Theme.POSITIVE, kind = "num",
+    cells = { 110, 80, 95, 70, 120, 70, 90, 65,
+              100, 75, 90, 80, 127, 75, 85, 60 },
+    paramBase = 16, encSelect = 3, encEdit = 4,
+  })
+
+  ctrl1:repaint()
+  ctrl2:repaint()
 end
