@@ -30,6 +30,25 @@ function readLua(p) {
   return fs.readFileSync(p, "utf8").replace(/\s+$/, "");
 }
 
+// Strip the trailing `return X` so the file can be inlined safely (a
+// top-level `return` in the bundle would halt the whole script before
+// the widget code runs).
+function stripReturn(code, symbol) {
+  return code.replace(new RegExp(`\\nreturn ${symbol}\\s*$`), "");
+}
+
+// Convert `local function NAME(...)` (the primitive's entry point) into
+// `function Theme.NAME(...)` so it lives on the global Theme directly,
+// without an IIFE wrapper. Avoids the upvalue-loss issue we hit on the
+// device with the previous `(function() ... end)()` pattern.
+function attachPrimitive(name, code) {
+  const stripped = stripReturn(code, name);
+  return stripped.replace(
+    new RegExp(`^local function ${name}\\(`, "m"),
+    `function Theme.${name}(`
+  );
+}
+
 function assemble(widgetSlug) {
   const widgetPath = path.join(WIDGETS, widgetSlug, "widget.lua");
   if (!fs.existsSync(widgetPath)) {
@@ -37,10 +56,10 @@ function assemble(widgetSlug) {
   }
   const widgetCode = readLua(widgetPath);
 
-  const theme = readLua(path.join(LIB, "theme.lua"));
+  const theme = stripReturn(readLua(path.join(LIB, "theme.lua")), "Theme");
   const primitives = PRIMITIVE_NAMES.map(name => ({
     name,
-    code: readLua(path.join(LIB, "primitives", `${name}.lua`)),
+    code: attachPrimitive(name, readLua(path.join(LIB, "primitives", `${name}.lua`))),
   }));
 
   const parts = [];
@@ -50,16 +69,12 @@ function assemble(widgetSlug) {
   parts.push("-- source widget.lua / theme.lua / primitives.");
   parts.push("");
   parts.push("-- ----- lib/theme.lua -----");
-  parts.push("Theme = (function()");
   parts.push(theme);
-  parts.push("end)()");
   parts.push("");
 
   for (const { name, code } of primitives) {
     parts.push(`-- ----- lib/primitives/${name}.lua -----`);
-    parts.push(`Theme.${name} = (function()`);
     parts.push(code);
-    parts.push("end)()");
     parts.push("");
   }
 

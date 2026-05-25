@@ -36,11 +36,11 @@ local function meter(x, y, w, h, value, opts)
 
   if opts.label then
     graphics.setColor(Theme.TEXT_DIM)
-    graphics.drawText(x, y, opts.label)
+    graphics.print(x, y, opts.label, 9999, LEFT)
   end
   if opts.valueText then
     graphics.setColor(Theme.TEXT)
-    graphics.drawText(x + w - #opts.valueText * 6, y, opts.valueText)
+    graphics.print(x + w - #opts.valueText * 6, y, opts.valueText, 9999, LEFT)
   end
 
   -- Track

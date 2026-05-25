@@ -93,6 +93,79 @@ implicit required fields we couldn't fully enumerate.
 - A bad `setBounds` value (non-table, missing keys) will silently skip; make sure you pass exactly `{x, y, w, h}`.
 - If you see other tiles "peek through" your custom tile, you have orphan tiles in the preset — strip the `tiles` array down to yours only, AND update `layouts[].slots` to reference only that tile.
 
+### Device-side gotchas (firmware 4.1.4, verified 2026-05-25)
+
+**Logger is OFF by default** — `print(...)` and Lua fatal-error stack traces only appear in the web editor's **Lua tab → log window** when the logger is enabled. Toggle it on the log window UI before debugging.
+
+**Integer coordinates only** — `graphics.fillRect / drawRect / drawLine / fillCircle / drawCircle / print` raise `"number has no integer representation"` if any coord is a float (very common after a `/ N` division). Wrap every coord in `math.floor(...)` or pre-floor your geometry helpers. The `Theme.rect / outline / line` helpers in `lib/theme.lua` do this for you.
+
+**`graphics.print` is the only text-drawing function** — no `drawText`. Exact signature:
+```lua
+graphics.print(x, y, text, width, alignment)
+-- alignment = LEFT | CENTER | RIGHT (global constants)
+```
+Width is the box width used for alignment (use a large value like 9999 for LEFT-aligned natural-width text).
+
+**Colours are 0xRRGGBB 24-bit** — the firmware converts to RGB565 internally (the 4.1.4 release notes specifically fixed this conversion for preset bank colours). Do **not** pre-convert to RGB565 yourself.
+
+**`controller.uptime()`** returns ms since boot. Only time API exposed to Lua. Use it for detecting double-click intervals, timeouts, etc.
+
+### Bundling theme + primitives + widget into one Lua blob
+
+The bundler at `scripts/bundle-preset.js` flattens `lib/theme.lua`, every `lib/primitives/*.lua`, and the widget's `widget.lua` into the preset's `lua` field for device upload.
+
+**Avoid IIFE wrappers** (`Theme = (function() ... end)()`). Tried — the device dropped paint callbacks (tile rendered as default fader). Hypothesis: upvalues captured by closures inside the IIFE were not preserved across paint dispatch. Use flat concatenation:
+- `theme.lua` must start with `Theme = Theme or {}` (not `local Theme = {}`), end **without** `return Theme` after stripping (the bundler does this).
+- Each `primitives/<name>.lua` must rewrite `local function <name>(...)` → `function Theme.<name>(...)` and strip the trailing `return <name>` (the bundler does this).
+- Never cache the `graphics` module in a top-level local (`local g = graphics`). Reference `graphics` directly inside each helper. Caching it crashed paint dispatch on device.
+
+**Callbacks must be global functions, not local closures.** A factory pattern that does `control:setPaintCallback(localFn)` from inside a `makeWidget(opts)` factory will not preserve the closure on the device. Define `paintLane / touchLane / potLane` as top-level globals, and keep per-tile state in global tables keyed by `ctrl:getId()`.
+
+### Multi-tile presets
+
+**`slotId` is 0-indexed on the MK2 6×6 grid.** Top-left = `slotId: 0`; second row left = `slotId: 6`; etc.
+
+**`span: "6"` (string) only enlarges the FIRST tile reliably.** A second `type:"custom"` tile with `span:"6"` is often rendered as a single slot (146×56 instead of full width). Workaround: in `preset.onLoad`, call `c:setBounds({x, y, w, h})` explicitly for every tile that needs span > 1.
+
+**1 physical encoder per custom tile.** The firmware dispatches pot events to a custom tile only for the pot mapped to one of its `values[]`. With one value, one pot. Multi-pot custom controls are a documented feature request, not yet shipped (see forum thread #4172). Plan UX around this constraint:
+- Pot turn = single action (e.g., navigate)
+- Single click (TOUCH→RELEASE without MOVE) = mode toggle
+- Double-click (two clicks ≤ ~400 ms apart, measured via `controller.uptime()`) = secondary action
+
+**Encoder press is NOT distinguishable from touch.** `events.onPotTouch` fires on capacitive touch but cannot tell click vs turn. Forum threads #4116 and #4185 confirm: no `onPotClick` exists. Use the TOUCH→RELEASE-without-MOVE pattern as a proxy.
+
+**Pot event shape**: `{ id = N, type = 1|2|3, delta = number }` where:
+- `id`: 0-indexed pot number assigned to the tile (varies per tile position)
+- `type = 1`: DOWN (touch starts)
+- `type = 2`: MOVE (rotation; `delta` ≠ 0)
+- `type = 3`: UP (touch ends)
+
+A click without rotation = DOWN then UP with no MOVE between, and `delta == 0` throughout.
+
+### Custom tile JSON structure (schemaVersion 2 works for custom widgets)
+
+Reference XT envelopes (`GK6wmbgvwM6S3GanpoN7`) — its single custom tile renders Lua correctly on device. Minimal required fields:
+```json
+{
+  "id": "<uuid>",
+  "reference": 1,
+  "slotId": 0,
+  "type": "custom",
+  "deviceId": 1,
+  "color": "F45C51",
+  "name": "MyTile",
+  "categoryId": "control",
+  "values": [{"id":"v","message":{"type":"virtual","deviceId":1,"parameterNumber":99}}],
+  "visible": true,
+  "span": "6",
+  "vspan": 1
+}
+```
+And the device JSON needs `"instrumentId": "generic-controls"` to be recognized:
+```json
+"devices": [{"id":1, "name":"Generic MIDI", "instrumentId":"generic-controls", "port":1, "channel":1}]
+```
+
 ---
 
 ## 2. Injecting a widget into app.electra.one for live testing on hardware

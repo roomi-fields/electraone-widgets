@@ -31,7 +31,7 @@ local function led(cx, cy, on, opts)
 
   if label then
     graphics.setColor(on and Theme.TEXT or Theme.TEXT_DIM)
-    graphics.drawText(cx + r + 6, cy - 5, label)
+    graphics.print(cx + r + 6, cy - 5, label, 9999, LEFT)
   end
 end
 

@@ -29,11 +29,11 @@ local function slider(x, y, w, h, value, opts)
 
   if label then
     graphics.setColor(Theme.TEXT_DIM)
-    graphics.drawText(x, y, label)
+    graphics.print(x, y, label, 9999, LEFT)
   end
   if vtext then
     graphics.setColor(Theme.TEXT)
-    graphics.drawText(x + w - #vtext * 6, y, vtext)
+    graphics.print(x + w - #vtext * 6, y, vtext, 9999, LEFT)
   end
 
   local bx, by, bw, bh = x, y + headerH, w, h - headerH

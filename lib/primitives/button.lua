@@ -31,8 +31,8 @@ local function button(x, y, w, h, opts)
     local lx = x + (w - tw) / 2
     local ly = y + h / 2 - 5
     graphics.setColor(Theme.CANVAS)
-    graphics.drawText(lx,     ly, label)
-    graphics.drawText(lx + 1, ly, label)
+    graphics.print(lx,     ly, label, 9999, LEFT)
+    graphics.print(lx + 1, ly, label, 9999, LEFT)
     return
   end
 
@@ -59,8 +59,8 @@ local function button(x, y, w, h, opts)
   local lx = x + (w - tw) / 2
   local ly = labelAreaY + (labelAreaH - 10) / 2
   graphics.setColor(state and Theme.TEXT or Theme.TEXT_DIM)
-  graphics.drawText(lx,     ly, label)
-  graphics.drawText(lx + 1, ly, label)
+  graphics.print(lx,     ly, label, 9999, LEFT)
+  graphics.print(lx + 1, ly, label, 9999, LEFT)
 end
 
 return button

@@ -7,7 +7,7 @@
 -- Copy this module to the top of your widget.lua to reuse it; the emulator
 -- pre-loads it automatically.
 
-local Theme = {}
+Theme = Theme or {}
 
 -- ========== Version ==========
 -- Widgets declare which Theme version they were written against via
@@ -25,73 +25,65 @@ function Theme.require(expected)
   end
 end
 
--- ========== Colour conversion ==========
--- Native MK2 colours are 16-bit RGB565. Convert from 8-bit components or
--- from a 0xRRGGBB integer.
+-- ========== Palette — RGB888 (24-bit) ==========
+-- The firmware (4.1.4+) accepts 0xRRGGBB values directly and converts to
+-- the panel's native RGB565 internally. The release notes for v4.1.4
+-- specifically fixed the RGB888→RGB565 translation for preset bank
+-- colours, confirming RGB888 is the expected input format.
+--
+-- Neutrals: cool slate hierarchy, blue-undertoned. Matches the MK2's
+-- brushed aluminum anodised enclosure so the screen feels continuous
+-- with the device edge.
+Theme.CANVAS    = 0x0A0D11   -- page base, deep slate-black
+Theme.SURFACE   = 0x14181E   -- card / tile, charcoal slate
+Theme.ELEVATED  = 0x232830   -- raised / active, brushed steel
+Theme.BORDER    = 0x3A4048   -- hairline, steel edge
+Theme.TEXT_DIM  = 0x9098A3   -- secondary text, cool silver
+Theme.TEXT      = 0xE8EBF0   -- primary text, cool off-white
 
-function Theme.rgb(r, g, b)
-  local r5 = (r >> 3) & 0x1F
-  local g6 = (g >> 2) & 0x3F
-  local b5 = (b >> 3) & 0x1F
-  return (r5 << 11) | (g6 << 5) | b5
-end
-
-function Theme.hex(h)
-  return Theme.rgb((h >> 16) & 0xFF, (h >> 8) & 0xFF, h & 0xFF)
-end
-
--- ========== Palette — neutrals ==========
--- Cool slate hierarchy, blue-undertoned. Matches the MK2's brushed
--- aluminum anodised enclosure so the screen feels continuous with the
--- device edge.
-Theme.CANVAS    = Theme.hex(0x0A0D11)  -- page base, deep slate-black
-Theme.SURFACE   = Theme.hex(0x14181E)  -- card / tile, charcoal slate
-Theme.ELEVATED  = Theme.hex(0x232830)  -- raised / active, brushed steel
-Theme.BORDER    = Theme.hex(0x3A4048)  -- hairline, steel edge
-Theme.TEXT_DIM  = Theme.hex(0x9098A3)  -- secondary text, cool silver
-Theme.TEXT      = Theme.hex(0xE8EBF0)  -- primary text, cool off-white
-
--- ========== Palette — accents ==========
--- Signature is warm-on-cold: amber-terracotta hero accent reads like a
--- VU-meter needle or an OP-1 encoder knob against the cool slate chrome.
--- Warning keeps the warm family; Positive / Info shift cold for balance
--- and state-read clarity.
-Theme.ACCENT         = Theme.hex(0xE5823E)  -- primary: active, modulation
-Theme.ACCENT_DIM     = Theme.hex(0x8F5129)  -- deep copper: inactive variant
-Theme.WARNING        = Theme.hex(0xF5C64A)  -- vintage VU yellow: peak-hold
-Theme.ALERT          = Theme.hex(0xEB5757)  -- red: over-threshold, critical
-Theme.POSITIVE       = Theme.hex(0x7EC699)  -- cool sage: in-range, confirmed
-Theme.INFO           = Theme.hex(0x5B8FD4)  -- steel blue: informational
-Theme.NEUTRAL_ACCENT = Theme.hex(0x6B7384)  -- cool grey-blue: disabled
+-- Accents: warm-on-cold signature. Amber-terracotta hero accent reads
+-- like a VU-meter needle or an OP-1 encoder knob against cool slate.
+Theme.ACCENT         = 0xE5823E   -- primary: active, modulation
+Theme.ACCENT_DIM     = 0x8F5129   -- deep copper: inactive variant
+Theme.WARNING        = 0xF5C64A   -- vintage VU yellow: peak-hold
+Theme.ALERT          = 0xEB5757   -- red: over-threshold, critical
+Theme.POSITIVE       = 0x7EC699   -- cool sage: in-range, confirmed
+Theme.INFO           = 0x5B8FD4   -- steel blue: informational
+Theme.NEUTRAL_ACCENT = 0x6B7384   -- cool grey-blue: disabled
 
 -- ========== Drawing helpers ==========
 -- Thin wrappers around graphics.* so widget code stays declarative.
+-- IMPORTANT: do NOT cache `graphics` to a local upvalue — the firmware
+-- (and our IIFE-free bundle layout) doesn't reliably keep upvalues alive
+-- across paint dispatch. Reference `graphics` directly inside each helper.
 
-local g = graphics
+-- The firmware's graphics primitives require integer coordinates; passing
+-- a float (e.g. from a division) raises "number has no integer
+-- representation". math.floor on every coord keeps things safe.
 
 function Theme.rect(x, y, w, h, color)
-  g.setColor(color)
-  g.fillRect(x, y, w, h)
+  graphics.setColor(color)
+  graphics.fillRect(math.floor(x), math.floor(y), math.floor(w), math.floor(h))
 end
 
 function Theme.outline(x, y, w, h, color)
-  g.setColor(color)
-  g.drawRect(x, y, w, h)
+  graphics.setColor(color)
+  graphics.drawRect(math.floor(x), math.floor(y), math.floor(w), math.floor(h))
 end
 
 function Theme.roundRect(x, y, w, h, r, color)
-  g.setColor(color)
-  g.fillRoundRect(x, y, w, h, r)
+  graphics.setColor(color)
+  graphics.fillRoundRect(math.floor(x), math.floor(y), math.floor(w), math.floor(h), math.floor(r))
 end
 
 function Theme.line(x1, y1, x2, y2, color)
-  g.setColor(color)
-  g.drawLine(x1, y1, x2, y2)
+  graphics.setColor(color)
+  graphics.drawLine(math.floor(x1), math.floor(y1), math.floor(x2), math.floor(y2))
 end
 
 function Theme.text(x, y, str, color)
-  g.setColor(color)
-  g.drawText(x, y, tostring(str))
+  graphics.setColor(color)
+  graphics.print(math.floor(x), math.floor(y), tostring(str), 9999, LEFT)
 end
 
 -- ========== Composite ==========

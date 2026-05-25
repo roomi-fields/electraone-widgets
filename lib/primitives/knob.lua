@@ -76,12 +76,12 @@ local function knob(x, y, size, value, opts)
   -- Centred value readout
   local text = opts.valueText or tostring(math.floor(v * 100 + 0.5))
   graphics.setColor(Theme.TEXT)
-  graphics.drawText(cx - #text * 4, cy - 6, text)
+  graphics.print(cx - #text * 4, cy - 6, text, 9999, LEFT)
 
   -- Label below
   if label then
     graphics.setColor(Theme.TEXT_DIM)
-    graphics.drawText(x + (size - #label * 6) / 2, y + size + 4, label)
+    graphics.print(x + (size - #label * 6) / 2, y + size + 4, label, 9999, LEFT)
   end
 end
 

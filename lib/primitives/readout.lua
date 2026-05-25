@@ -22,7 +22,7 @@ local function readout(x, y, opts)
 
   if label then
     graphics.setColor(Theme.TEXT_DIM)
-    graphics.drawText(x, y, label)
+    graphics.print(x, y, label, 9999, LEFT)
   end
 
   -- We don't have access to font metrics on the MK2 so character width is
@@ -34,11 +34,11 @@ local function readout(x, y, opts)
   local valueY = label and (y + 12) or y
 
   graphics.setColor(color)
-  graphics.drawText(startX, valueY, value)
+  graphics.print(startX, valueY, value, 9999, LEFT)
 
   if unit then
     graphics.setColor(Theme.TEXT_DIM)
-    graphics.drawText(startX + valueW + 4, valueY + 4, unit)
+    graphics.print(startX + valueW + 4, valueY + 4, unit, 9999, LEFT)
   end
 end
 

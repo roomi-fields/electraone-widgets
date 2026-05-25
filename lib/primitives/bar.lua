@@ -33,13 +33,13 @@ local function bar(x, y, w, h, value, opts)
   -- Label on top-left
   if label then
     graphics.setColor(Theme.TEXT_DIM)
-    graphics.drawText(x, y, label)
+    graphics.print(x, y, label, 9999, LEFT)
   end
 
   -- Value on top-right
   if vtext then
     graphics.setColor(Theme.TEXT)
-    graphics.drawText(x + w - #vtext * 6, y, vtext)
+    graphics.print(x + w - #vtext * 6, y, vtext, 9999, LEFT)
   end
 end
 

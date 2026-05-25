@@ -92,8 +92,8 @@
   },
   {
     "slug": "note-list-16",
-    "name": "16-Step Note List (×3 lanes)",
-    "description": "A reusable 16-step custom control inspired by the Waldorf Q-style arpeggiator / step-list editor. Each lane is one row of 16 cells, **grouped by 4** with thicker dividers, displaying values in-cell (note names, raw values, or `%`). A common **RANGE** parameter dims/hides the steps past the active pattern length so you can shorten without losing your edits.",
+    "name": "16-Step Note List",
+    "description": "A reusable 16-step custom control inspired by the Waldorf Q-style arpeggiator / step-list editor. **One instance = one single tile** (target: 5-6 slots wide × 1 deep). The cells display values directly — note names, raw 0..127 or %, no fader bars — grouped every 4 by a thin BORDER tick. Two dedicated encoders per instance: one for **step selection**, one for **value editing**. A **common RANGE** (virtual parameter 33) is shared between instances and darkens out-of-range cells without losing their stored values.",
     "previewExt": "png",
     "family": "design-system"
   },

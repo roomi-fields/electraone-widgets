@@ -46,17 +46,26 @@ class Stage {
     this.potCbs = {};
     this.currentColor = 0xFFFFFF;
   }
-  // MK2 graphics API uses RGB565 (16-bit, r5 g6 b5). Expand each channel to
-  // 8-bit by left-shifting and folding the high bits back in — matches how
-  // the firmware drives its 24-bit framebuffer.
+  // Firmware 4.1.4+ accepts 24-bit RGB888 (0xRRGGBB) and converts to its
+  // native RGB565 panel format internally. Earlier firmware required
+  // explicit RGB565 (16-bit). We accept both:
+  //   - value > 0xFFFF  → treat as RGB888, take channels directly
+  //   - value ≤ 0xFFFF  → treat as RGB565, expand each channel back to 8-bit
   hexColor(c) {
-    const v = (c >>> 0) & 0xFFFF;
-    const r5 = (v >> 11) & 0x1F;
-    const g6 = (v >> 5)  & 0x3F;
-    const b5 = v         & 0x1F;
-    const r8 = (r5 << 3) | (r5 >> 2);
-    const g8 = (g6 << 2) | (g6 >> 4);
-    const b8 = (b5 << 3) | (b5 >> 2);
+    c = (c >>> 0);
+    let r8, g8, b8;
+    if (c > 0xFFFF) {
+      r8 = (c >> 16) & 0xFF;
+      g8 = (c >> 8)  & 0xFF;
+      b8 =  c        & 0xFF;
+    } else {
+      const r5 = (c >> 11) & 0x1F;
+      const g6 = (c >> 5)  & 0x3F;
+      const b5 =  c        & 0x1F;
+      r8 = (r5 << 3) | (r5 >> 2);
+      g8 = (g6 << 2) | (g6 >> 4);
+      b8 = (b5 << 3) | (b5 >> 2);
+    }
     return "#" + [r8, g8, b8].map(n => n.toString(16).padStart(2, "0")).join("");
   }
   paintAll() {
@@ -476,13 +485,28 @@ function setupEnv(L, stage) {
     drawLine: (x1, y1, x2, y2) => { stage.ctx.beginPath(); stage.ctx.moveTo(x1, y1); stage.ctx.lineTo(x2, y2); stage.ctx.stroke(); },
     fillTriangle: (x1, y1, x2, y2, x3, y3) => { stage.ctx.beginPath(); stage.ctx.moveTo(x1, y1); stage.ctx.lineTo(x2, y2); stage.ctx.lineTo(x3, y3); stage.ctx.closePath(); stage.ctx.fill(); },
     drawTriangle: (x1, y1, x2, y2, x3, y3) => { stage.ctx.beginPath(); stage.ctx.moveTo(x1, y1); stage.ctx.lineTo(x2, y2); stage.ctx.lineTo(x3, y3); stage.ctx.closePath(); stage.ctx.stroke(); },
-    print: (x, y, text, size) => {
-      stage.ctx.font = `${size || 10}px 'Open Sans', sans-serif`;
+    // graphics.print(x, y, text, width, alignment) — matches device API.
+    // `width` is the alignment box width (use a large value for LEFT-aligned
+    // natural-width text). `alignment` is LEFT (0) / RIGHT (1) / CENTER (2).
+    // Font is fixed at 10px to match the device's default glyph size.
+    print: (x, y, text, width, alignment) => {
+      stage.ctx.font = `10px 'Open Sans', sans-serif`;
       stage.ctx.textBaseline = "top";
-      stage.ctx.fillText(String(text ?? ""), x, y);
+      const s = String(text ?? "");
+      const w = (typeof width === "number") ? width : 0;
+      if (alignment === CONST.CENTER) {
+        const tw = stage.ctx.measureText(s).width;
+        stage.ctx.fillText(s, x + (w - tw) / 2, y);
+      } else if (alignment === CONST.RIGHT) {
+        const tw = stage.ctx.measureText(s).width;
+        stage.ctx.fillText(s, x + w - tw, y);
+      } else {
+        stage.ctx.fillText(s, x, y);
+      }
     },
-    drawText: (x, y, text, size) => {
-      stage.ctx.font = `${size || 10}px 'Open Sans', sans-serif`;
+    // Legacy alias for older widgets — the device API doesn't expose this.
+    drawText: (x, y, text) => {
+      stage.ctx.font = `10px 'Open Sans', sans-serif`;
       stage.ctx.textBaseline = "top";
       stage.ctx.fillText(String(text ?? ""), x, y);
     },
