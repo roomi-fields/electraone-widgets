@@ -93,6 +93,29 @@ implicit required fields we couldn't fully enumerate.
 - A bad `setBounds` value (non-table, missing keys) will silently skip; make sure you pass exactly `{x, y, w, h}`.
 - If you see other tiles "peek through" your custom tile, you have orphan tiles in the preset — strip the `tiles` array down to yours only, AND update `layouts[].slots` to reference only that tile.
 
+### Where the official docs live (read these first!)
+
+A complete mirror of `docs.electra.one` lives in `.electra-docs/md/` (79
+pages including the Lua crash course) and is indexed by RTFM in this
+project. **Before assuming any device behaviour is "undocumented", grep
+the mirror.** Lots of "gotchas" we discovered empirically (event types,
+controller events, potId 1..12 numbering, etc.) are actually
+documented.
+
+Key doc files:
+- `.electra-docs/md/developers/luaext.md` — full Lua API (graphics,
+  controls, parameterMap, events, MIDI, controller, devices, timer,
+  parameters, overlays, midi message types, touch events constants).
+- `.electra-docs/md/developers/presetformat.md` — preset JSON structure
+  including the `inputs` array (`{potId, valueId}` mappings), all
+  control types, overlay format.
+- `.electra-docs/md/developers/midiimplementation.md` — SysEx protocol.
+- `.electra-docs/md/luacourse/` — MIDI/Lua tutorial chapters.
+- `.electra-docs/md/userguide-mk2/` — MK2-specific UI / menu / settings
+  doc (bootloader, performance mode, presetmenu, etc.).
+
+Use `rtfm_search "<term>"` to query the mirror.
+
 ### Device-side gotchas (firmware 4.1.4, verified 2026-05-25)
 
 **Logger is OFF by default** — `print(...)` and Lua fatal-error stack traces only appear in the web editor's **Lua tab → log window** when the logger is enabled. Toggle it on the log window UI before debugging.

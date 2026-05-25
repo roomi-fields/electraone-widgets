@@ -6,3 +6,7 @@ docs/widgets
 
 # RTFM local database
 .rtfm/
+
+# docs.electra.one local mirror: track the extracted markdown so RTFM
+# can index it; ignore the raw HTML (regeneratable, ~5 MB).
+.electra-docs/html/
