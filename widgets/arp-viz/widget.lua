@@ -186,7 +186,7 @@ function paintArp(control)
   for _, midi in ipairs({ 48, 60, 72, 84 }) do
     local yy = VIZ_Y + VIZ_H - math.floor(VIZ_H * (midi - PITCH_MIN) / pitchRange) - 5
     local octLabel = "C" .. tostring(math.floor(midi / 12) - 1)
-    graphics.drawText(VIZ_X + VIZ_W + 6, yy, octLabel)
+    graphics.print(VIZ_X + VIZ_W + 6, yy, octLabel, 9999, LEFT)
   end
 
   -- Footer: 3 knobs + PATTERN button + activity LED
@@ -213,14 +213,14 @@ function paintArp(control)
   })
   -- Sub-label under the button
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(PATTERN_BTN.x + (PATTERN_BTN.w - 42) / 2, PATTERN_BTN.y + PATTERN_BTN.h + 4, "PATTERN")
+  graphics.print(PATTERN_BTN.x + (PATTERN_BTN.w - 42) / 2, PATTERN_BTN.y + PATTERN_BTN.h + 4, "PATTERN", 9999, LEFT)
 
   -- Activity LED
   Theme.led(LED_XY.x, LED_XY.y + KNOB_SIZE / 2, ledFlash > 0, {
     color = Theme.POSITIVE, size = 10,
   })
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(LED_XY.x - 18, LED_XY.y + KNOB_SIZE / 2 + 18, "FIRING")
+  graphics.print(LED_XY.x - 18, LED_XY.y + KNOB_SIZE / 2 + 18, "FIRING", 9999, LEFT)
 end
 
 -- ===== Touch =====

@@ -116,7 +116,7 @@ local function paintMeterCard(m, value, peakValue, color, yTargetDb)
     graphics.drawLine(m.x + m.w - len, yy, m.x + m.w, yy)
     if major then
       graphics.drawLine(m.x + m.w - len, yy + 1, m.x + m.w, yy + 1)
-      graphics.drawText(m.x + m.w + 4, yy - 4, tostring(db))
+      graphics.print(m.x + m.w + 4, yy - 4, tostring(db), 9999, LEFT)
     end
   end
 
@@ -145,7 +145,7 @@ local function paintMeterCard(m, value, peakValue, color, yTargetDb)
 
   -- Label above meter
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(m.x + (m.w - #m.label * 6) / 2, METER_Y - 14, m.label)
+  graphics.print(m.x + (m.w - #m.label * 6) / 2, METER_Y - 14, m.label, 9999, LEFT)
 end
 
 function paintMeter(control)
@@ -173,19 +173,19 @@ function paintMeter(control)
 
   -- Big LUFS readout (short-term)
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(STATS_X + 20, STATS_Y + 16, "SHORT-TERM")
+  graphics.print(STATS_X + 20, STATS_Y + 16, "SHORT-TERM", 9999, LEFT)
   graphics.setColor(lufsColor(lufsShort))
   local bigLufs = string.format("%.1f LUFS", lufsShort)
-  graphics.drawText(STATS_X + 20,     STATS_Y + 36, bigLufs)
-  graphics.drawText(STATS_X + 20 + 1, STATS_Y + 36, bigLufs)  -- double-draw for weight
+  graphics.print(STATS_X + 20,     STATS_Y + 36, bigLufs, 9999, LEFT)
+  graphics.print(STATS_X + 20 + 1, STATS_Y + 36, bigLufs, 9999, LEFT)  -- double-draw for weight
 
   -- Big TP readout
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(STATS_X + 20, STATS_Y + 76, "TRUE PEAK")
+  graphics.print(STATS_X + 20, STATS_Y + 76, "TRUE PEAK", 9999, LEFT)
   graphics.setColor(tpColor(tpCur))
   local bigTp = string.format("%.1f dBTP", tpCur)
-  graphics.drawText(STATS_X + 20,     STATS_Y + 96, bigTp)
-  graphics.drawText(STATS_X + 20 + 1, STATS_Y + 96, bigTp)
+  graphics.print(STATS_X + 20,     STATS_Y + 96, bigTp, 9999, LEFT)
+  graphics.print(STATS_X + 20 + 1, STATS_Y + 96, bigTp, 9999, LEFT)
 
   -- Secondary stats (integrated, max, LRA) in a mini-table
   local rows = {
@@ -197,9 +197,9 @@ function paintMeter(control)
   for i, row in ipairs(rows) do
     local ry = STATS_Y + 160 + (i - 1) * 32
     graphics.setColor(Theme.TEXT_DIM)
-    graphics.drawText(STATS_X + 20, ry, row[1])
+    graphics.print(STATS_X + 20, ry, row[1], 9999, LEFT)
     graphics.setColor(Theme.TEXT)
-    graphics.drawText(STATS_X + STATS_W - #row[2] * 6 - 20, ry, row[2])
+    graphics.print(STATS_X + STATS_W - #row[2] * 6 - 20, ry, row[2], 9999, LEFT)
   end
 
   -- Three transport buttons
@@ -208,7 +208,7 @@ function paintMeter(control)
     label = BTN_MODE.label, state = true, color = Theme.ACCENT,
   })
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(BTN_MODE.x + (BTN_MODE.w - 24) / 2, BTN_MODE.y + BTN_MODE.h + 4, "MODE")
+  graphics.print(BTN_MODE.x + (BTN_MODE.w - 24) / 2, BTN_MODE.y + BTN_MODE.h + 4, "MODE", 9999, LEFT)
 
   Theme.button(BTN_RESET.x, BTN_RESET.y, BTN_RESET.w, BTN_RESET.h, {
     label = BTN_RESET.label, flashing = resetFlash > 0,
@@ -220,7 +220,7 @@ function paintMeter(control)
 
   -- Footer hint
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(20, 510, "MODE cycles target · RESET zeros max / integrated · HOLD freezes true-peak")
+  graphics.print(20, 510, "MODE cycles target · RESET zeros max / integrated · HOLD freezes true-peak", 9999, LEFT)
 end
 
 -- ===== Touch =====

@@ -117,10 +117,10 @@ local function paintPanCircle()
 
   -- Cardinal labels (FRONT up, RIGHT, BACK down, LEFT)
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(CIRCLE_CX - 18, CIRCLE_CY - r - 16, "FRONT")
-  graphics.drawText(CIRCLE_CX - 14, CIRCLE_CY + r + 6,  "BACK")
-  graphics.drawText(CIRCLE_CX + r + 6,  CIRCLE_CY - 6,  "R")
-  graphics.drawText(CIRCLE_CX - r - 14, CIRCLE_CY - 6,  "L")
+  graphics.print(CIRCLE_CX - 18, CIRCLE_CY - r - 16, "FRONT", 9999, LEFT)
+  graphics.print(CIRCLE_CX - 14, CIRCLE_CY + r + 6,  "BACK", 9999, LEFT)
+  graphics.print(CIRCLE_CX + r + 6,  CIRCLE_CY - 6,  "R", 9999, LEFT)
+  graphics.print(CIRCLE_CX - r - 14, CIRCLE_CY - 6,  "L", 9999, LEFT)
 
   -- Source position: axes x right, y forward → screen x=cx+x·r, y=cy-y·r
   local sx = CIRCLE_CX + math.floor(srcX * r)
@@ -162,21 +162,21 @@ local function paintRightPanel()
   -- Azimuth readout (big)
   local az = azimuthDeg()
   graphics.setColor(Theme.ACCENT)
-  graphics.drawText(x + 16, y + 36, string.format("%3d°", math.floor(az + 0.5)))
+  graphics.print(x + 16, y + 36, string.format("%3d°", math.floor(az + 0.5)), 9999, LEFT)
 
   -- Distance readout
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(x + 140, y + 36, "DIST")
+  graphics.print(x + 140, y + 36, "DIST", 9999, LEFT)
   graphics.setColor(Theme.ACCENT)
-  graphics.drawText(x + 140, y + 56, string.format("%d%%", math.floor(distance() * 100)))
+  graphics.print(x + 140, y + 56, string.format("%d%%", math.floor(distance() * 100)), 9999, LEFT)
 
   -- Pan readout
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(x + 260, y + 36, "PAN")
+  graphics.print(x + 260, y + 36, "PAN", 9999, LEFT)
   graphics.setColor(Theme.ACCENT)
-  graphics.drawText(x + 260, y + 56, (pan < 0) and string.format("L%2d", math.floor(-pan*100 + 0.5))
+  graphics.print(x + 260, y + 56, (pan < 0) and string.format("L%2d", math.floor(-pan*100 + 0.5))
                                   or  (pan > 0) and string.format("R%2d", math.floor( pan*100 + 0.5))
-                                  or  "CTR")
+                                  or  "CTR", 9999, LEFT)
 
   -- L / R level bars
   local barY = y + 140
@@ -191,8 +191,8 @@ local function paintRightPanel()
 
   -- Hint
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(x, barY + 108, "Drag the circle to move the source.")
-  graphics.drawText(x, barY + 124, "Pot 1 = azimuth, pot 2 = distance.")
+  graphics.print(x, barY + 108, "Drag the circle to move the source.", 9999, LEFT)
+  graphics.print(x, barY + 124, "Pot 1 = azimuth, pot 2 = distance.", 9999, LEFT)
 end
 
 -- ===== Paint =====

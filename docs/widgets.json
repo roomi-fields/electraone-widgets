@@ -93,7 +93,7 @@
   {
     "slug": "note-list-16",
     "name": "16-Step Note List",
-    "description": "A reusable 16-step custom control inspired by the Waldorf Q-style arpeggiator / step-list editor. **One instance = one single tile** (target: 5-6 slots wide × 1 deep). The cells display values directly — note names, raw 0..127 or %, no fader bars — grouped every 4 by a thin BORDER tick. Two dedicated encoders per instance: one for **step selection**, one for **value editing**. A **common RANGE** (virtual parameter 33) is shared between instances and darkens out-of-range cells without losing their stored values.",
+    "description": "A 16-step custom step-list editor inspired by the Waldorf Q-style arpeggiator and the **forum request from NewIgnis** ([Looking for a 16-step custom control for arp and seq](https://forum.electra.one/t/looking-for-a-16-step-custom-control-for-arp-and-seq/4425)). Each \"lane\" is a 6×1 custom tile holding 16 cells, grouped every 4 by a thin BORDER tick. Values are displayed directly in-cell (note names, raw 0..127, percentages, or any custom **overlay** label table), with no fader bars — just a thin gauge underneath each cell as a visual cue.",
     "previewExt": "png",
     "family": "design-system"
   },

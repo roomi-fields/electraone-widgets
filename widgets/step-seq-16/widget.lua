@@ -119,7 +119,7 @@ function paintSeq(control)
 
   Theme.text(W - 260, 10, string.format("STEP %02d / 16", currentStep), Theme.TEXT_DIM)
   graphics.setColor(Theme.ACCENT)
-  graphics.drawText(W - 130, 10, string.format("%d BPM", bpm))
+  graphics.print(W - 130, 10, string.format("%d BPM", bpm), 9999, LEFT)
   Theme.led(W - 30, 18, running, { color = Theme.POSITIVE, size = 6 })
 
   -- 2-row grid, 32 cells. Active column highlights both rows — but on
@@ -176,7 +176,7 @@ function paintSeq(control)
 
   -- Footer hint
   graphics.setColor(Theme.TEXT_DIM)
-  graphics.drawText(20, 510, "Tap a cell to toggle · drag vertically to set velocity")
+  graphics.print(20, 510, "Tap a cell to toggle · drag vertically to set velocity", 9999, LEFT)
 end
 
 -- ===== Touch =====
