@@ -242,6 +242,106 @@ Port to **Windows MIDI Services 1.0** (in-box service Microsoft shipped to Win 1
 
 ---
 
+## 1.5 Develop a widget from scratch using only the MCP
+
+End-to-end loop with the [electra-one MCP](https://github.com/roomi-fields/electra-one-mcp) — no `app.electra.one`, no Firestore.
+
+Assumes you have the plugin installed and the device on USB MIDI. The CTRL port on this hardware is `MIDIOUT3 / MIDIIN3 (Electra Controller)`.
+
+### Step 1 — Scaffold from an existing widget
+
+Copy `widgets/note-list-16/` to `widgets/my-widget/`. Edit `widget.lua` for your paint logic. Tile schema in `demo.preset.json` stays mostly the same — change `id`, `name`, the tile's `name`, and any custom values you reference in Lua.
+
+### Step 2 — Bundle locally
+
+```bash
+node scripts/bundle-preset.js my-widget
+```
+
+This concatenates `lib/theme.lua` + every required `lib/primitives/*.lua` + `widgets/my-widget/widget.lua` and writes the result into `demo.preset.json`'s `lua` field. The bundler also handles the IIFE-free Theme pattern + the integer-coordinate constraint.
+
+### Step 3 — Push to the device
+
+One command:
+
+```bash
+python3 ~/dev/mcp/electra-one/server/win_bridge.py upload-preset \
+  --preset widgets/my-widget/demo.preset.json \
+  --port "MIDIOUT3 (Electra Controller)" \
+  --bank 0 --slot 0 --mode simple
+```
+
+Or from inside Claude Code (the MCP exposes it as a tool):
+
+```
+push_to_device(preset_path="widgets/my-widget/demo.preset.json", bank=0, slot=0)
+```
+
+### Step 4 — Inspect runtime state
+
+Lua REPL — runs a snippet WITHOUT overwriting the persistent main.lua:
+
+```
+execute_lua("print(parameterMap.get(99))")
+execute_lua("print(controls.get(1):getName(), controls.get(1):getBounds()[3])")
+execute_lua("for _, c in ipairs(controls.getList()) do print(c:getId(), c:getName()) end")
+```
+
+The MCP captures `print()` output via `7F 00` device events.
+
+State snapshot — what bank/slot/page is the device on right now?
+
+```
+device_state(seconds=2)
+```
+
+Returns `state.{bank, slot, page, control_set, snapshot_bank}` last-known values plus the recent event log. Subscribe to additional events first if you need pot touches / button presses:
+
+```
+subscribe_events(["pots", "touch", "button"])
+device_state(seconds=5)   # touch the encoder, button, screen during these 5s
+```
+
+### Step 5 — Iterate
+
+Edit `widget.lua` → re-bundle → re-push. The slot-flip reload baked into `upload-preset` means the device re-loads cleanly each time, no physical reboot.
+
+If you get a runtime Lua error, `device_state` shows it in the `log` field; usually a missing `math.floor()` on a coordinate (the firmware refuses non-integer args to `graphics.drawLine` / `graphics.print`).
+
+### Step 6 — Pull back what's on the device
+
+When you've edited a preset on the device (or another tool wrote it) and want to capture the current state into the repo:
+
+```
+pull_preset(bank=0, slot=0, out_path="widgets/my-widget/demo.preset.json")
+```
+
+This combines `02 01 Get Active Preset` + `02 0C Get Lua` and reverse-converts the `controls` schema back to our `tiles` schema. `git diff` will show you what changed.
+
+### Cheat sheet
+
+| Need | MCP tool |
+|---|---|
+| Push a widget | `upload_preset(path, bank, slot)` |
+| Inspect runtime | `execute_lua(source)` — REPL with print() capture |
+| What's on screen | `device_state(seconds)` |
+| Read the Lua on device | `get_lua_source(bank, slot)` |
+| Capture device → repo | `pull_preset(bank, slot, out_path)` |
+| Subscribe to more events | `subscribe_events([...])` |
+| Look up a SysEx command | `get_sysex_command(query)` — 62 commands catalogued |
+| Search the official docs | `search_docs(query)` |
+| Validate a preset before push | `validate_preset(json)` |
+| Bundle theme+primitives+widget | `bundle_widget(theme, primitives, widget)` |
+| Clear a slot for a fresh test | `clear_preset_slot(bank, slot)` |
+| Upload other files (devices/data/perf) | `upload_devices_overrides`, `upload_persisted_data`, `upload_performance` |
+| Upload reusable Lua module | `upload_lua_module(path, ns, name)` — for shared libs |
+| Open a screenshot of the emulator | `screenshot_widget(slug)` |
+| Get firmware info | `device_status()` |
+
+20 tools total. Run `python3 server/server.py --help` (or query the MCP server directly) for the full list.
+
+---
+
 ## 2. Injecting a widget into app.electra.one for live testing on hardware
 
 **Why this matters**: the online editor's "New Preset" UI is hostile. Editing by
