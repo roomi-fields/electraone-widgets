@@ -219,6 +219,14 @@ And the device JSON needs `"instrumentId": "generic-controls"` to be recognized:
 
 **Long-term path:** port to **Windows MIDI Services 1.0** via `winsdk` / `pywinrt`. It's the new in-box service Microsoft shipped to Win 11 in Feb 2026; it replaces `winmm.dll` and fixes the USB-MIDI 1.0 fragmentation issue.
 
+**Root cause of "silent commit rollback" (2026-05-26): the widgets in this repo use the web editor's "tiles" schema, NOT the documented firmware schema.**
+
+The firmware's preset parser (per `presetformat.html`) expects `version` (numeric), `pages`, `devices`, `overlays`, `groups`, `controls`. Our `widgets/*/demo.preset.json` files use `schemaVersion`, `tiles`, `targetDevice`, `firstPageId`, `categoryId` per tile — **none of these are documented**. The web editor at `app.electra.one` converts our format to the documented one before SysEx upload; we don't (yet).
+
+Symptom when uploading our raw "tiles" JSON: every command ACKs at the SysEx level, `7E 05` preset-list-change event fires, `7E 02` preset-switch event fires, but `Get Active Preset` (`02 01`) returns 0 bytes and the screen shows "no name - page 1". Both the simple `01 01` path and the File Transfer API hit this — the bug is in the *content*, not the *transport*.
+
+To push our widgets via SysEx without going through the website, either (a) write a `tiles → controls/groups` converter, or (b) sniff what `app.electra.one` actually sends (instrument `MIDIOutput.send` in DevTools) and replicate.
+
 **Confirmed empirically on hardware (2026-05-26)**:
 - Small preset via simple `01 01` upload (< ~5 KB): works, loads & displays immediately
 - Tiny preset via FT API (~500 B, 3 chunks): commits, persists to disk, displays after a reload trigger

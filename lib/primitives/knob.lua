@@ -34,8 +34,8 @@ local function knob(x, y, size, value, opts)
     local i1 = math.ceil(segs * t1)
     for i = i0, i1 do
       local a = startA + sweep * (i / segs)
-      local px = cx + rr * math.cos(a)
-      local py = cy + rr * math.sin(a)
+      local px = math.floor(cx + rr * math.cos(a))
+      local py = math.floor(cy + rr * math.sin(a))
       if lx then graphics.drawLine(lx, ly, px, py) end
       lx, ly = px, py
     end
@@ -62,16 +62,19 @@ local function knob(x, y, size, value, opts)
 
   -- Indicator: thick radial line from centre to the ring, in accent colour.
   -- Drawn as 3 parallel lines offset perpendicularly for pseudo-stroke-weight.
+  -- Firmware requires integer coordinates for drawLine, so floor the final pixel
+  -- positions (the float math for direction is fine — only the args to drawLine
+  -- need to be integers).
   local indA = startA + sweep * v
   local nx, ny = -math.sin(indA), math.cos(indA)    -- perpendicular unit
-  local ox = cx + (bodyR - 2) * math.cos(indA)
-  local oy = cy + (bodyR - 2) * math.sin(indA)
-  local ix = cx + r * math.cos(indA)
-  local iy = cy + r * math.sin(indA)
+  local ox = math.floor(cx + (bodyR - 2) * math.cos(indA))
+  local oy = math.floor(cy + (bodyR - 2) * math.sin(indA))
+  local ix = math.floor(cx + r * math.cos(indA))
+  local iy = math.floor(cy + r * math.sin(indA))
   graphics.setColor(color)
   graphics.drawLine(ox, oy, ix, iy)
-  graphics.drawLine(ox + nx, oy + ny, ix + nx, iy + ny)
-  graphics.drawLine(ox - nx, oy - ny, ix - nx, iy - ny)
+  graphics.drawLine(math.floor(ox + nx), math.floor(oy + ny), math.floor(ix + nx), math.floor(iy + ny))
+  graphics.drawLine(math.floor(ox - nx), math.floor(oy - ny), math.floor(ix - nx), math.floor(iy - ny))
 
   -- Centred value readout
   local text = opts.valueText or tostring(math.floor(v * 100 + 0.5))

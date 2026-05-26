@@ -28,8 +28,9 @@ local function button(x, y, w, h, opts)
     Theme.outline(x + 2, y + 2, w - 4, h - 4, Theme.BORDER)
     Theme.rect   (x + 3, y + 3, w - 6, h - 6, Theme.WARNING)
     local tw = #label * 6
-    local lx = x + (w - tw) / 2
-    local ly = y + h / 2 - 5
+    -- Firmware requires integer coords for graphics.print
+    local lx = math.floor(x + (w - tw) / 2)
+    local ly = math.floor(y + h / 2 - 5)
     graphics.setColor(Theme.CANVAS)
     graphics.print(lx,     ly, label, 9999, LEFT)
     graphics.print(lx + 1, ly, label, 9999, LEFT)
@@ -50,14 +51,16 @@ local function button(x, y, w, h, opts)
   Theme.rect(bx, by, bw, winH, winColor)
   -- 1px BORDER separator between window and label area
   graphics.setColor(Theme.BORDER)
-  graphics.drawLine(bx, by + winH, bx + bw - 1, by + winH)
+  graphics.drawLine(math.floor(bx), math.floor(by + winH),
+                    math.floor(bx + bw - 1), math.floor(by + winH))
 
   -- Label — centred in the area below the window, double-drawn for weight
   local labelAreaY = by + winH + 1
   local labelAreaH = bh - winH - 1
   local tw = #label * 6
-  local lx = x + (w - tw) / 2
-  local ly = labelAreaY + (labelAreaH - 10) / 2
+  -- Firmware requires integer coords for graphics.print
+  local lx = math.floor(x + (w - tw) / 2)
+  local ly = math.floor(labelAreaY + (labelAreaH - 10) / 2)
   graphics.setColor(state and Theme.TEXT or Theme.TEXT_DIM)
   graphics.print(lx,     ly, label, 9999, LEFT)
   graphics.print(lx + 1, ly, label, 9999, LEFT)
