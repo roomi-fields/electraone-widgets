@@ -318,27 +318,30 @@ pull_preset(bank=0, slot=0, out_path="widgets/my-widget/demo.preset.json")
 
 This combines `02 01 Get Active Preset` + `02 0C Get Lua` and reverse-converts the `controls` schema back to our `tiles` schema. `git diff` will show you what changed.
 
-### Cheat sheet
+### Cheat sheet (20 MCP tools)
 
 | Need | MCP tool |
 |---|---|
-| Push a widget | `upload_preset(path, bank, slot)` |
-| Inspect runtime | `execute_lua(source)` — REPL with print() capture |
-| What's on screen | `device_state(seconds)` |
+| Push a widget to a slot | `push_to_device(preset_path, bank, slot)` |
+| Inspect runtime | `execute_lua(source)` — REPL with `print()` capture |
+| What's on screen | `device_state(seconds)` — returns last-known bank/slot/page + recent events |
 | Read the Lua on device | `get_lua_source(bank, slot)` |
 | Capture device → repo | `pull_preset(bank, slot, out_path)` |
-| Subscribe to more events | `subscribe_events([...])` |
-| Look up a SysEx command | `get_sysex_command(query)` — 62 commands catalogued |
-| Search the official docs | `search_docs(query)` |
-| Validate a preset before push | `validate_preset(json)` |
-| Bundle theme+primitives+widget | `bundle_widget(theme, primitives, widget)` |
+| Subscribe to more events | `subscribe_events(["pots","touch","button",...])` |
+| Get firmware/serial info | `device_status()` |
+| Tail device log lines | `get_device_logs(seconds)` — legacy; `device_state` returns logs too |
 | Clear a slot for a fresh test | `clear_preset_slot(bank, slot)` |
-| Upload other files (devices/data/perf) | `upload_devices_overrides`, `upload_persisted_data`, `upload_performance` |
-| Upload reusable Lua module | `upload_lua_module(path, ns, name)` — for shared libs |
-| Open a screenshot of the emulator | `screenshot_widget(slug)` |
-| Get firmware info | `device_status()` |
+| Upload devices/data/perf side files | `upload_devices_overrides`, `upload_persisted_data`, `upload_performance` |
+| Upload reusable Lua module | `upload_lua_module(path, namespace, name)` |
+| Bundle theme + primitives + widget | `bundle_widget(theme, primitives, widget)` |
+| Validate preset before push | `validate_preset(json)` |
+| Render preset via emulator | `screenshot_widget(slug)` |
+| Search official docs | `search_docs(query)` |
+| Lua API signature lookup | `get_api(symbol)` — e.g. `graphics.print` |
+| Enum constants lookup | `list_constants(category)` — e.g. `touch`, `events`, `align` |
+| Look up any SysEx command | `get_sysex_command(query)` — 62 commands catalogued |
 
-20 tools total. Run `python3 server/server.py --help` (or query the MCP server directly) for the full list.
+20 tools total. The full list lives in `electra-one-mcp/server/server.py` as `@mcp.tool()` decorated functions.
 
 ---
 
