@@ -189,6 +189,46 @@ And the device JSON needs `"instrumentId": "generic-controls"` to be recognized:
 "devices": [{"id":1, "name":"Generic MIDI", "instrumentId":"generic-controls", "port":1, "channel":1}]
 ```
 
+### Pushing presets via SysEx (Windows USB-MIDI gotchas, verified 2026-05-26)
+
+**The simple `01 01` upload command is fragile on Windows for big presets.** Hard data:
+- < ~5 KB: single `F0 00 21 45 01 01 <ascii-json> F7` to the CTRL port works
+- ~25 KB (step-seq-16): the Windows USB-MIDI 1.0 class driver fragments the SysEx into USB packets; the device receives the first fragment only and parses it as an empty/garbage preset
+- Worse: Windows updates KB5077181 / KB5074105 (late 2025) made the fragmentation more aggressive
+- Chrome WebMIDI works because (a) it caps `midiOutLongMsg` at 60 KB and (b) since Feb 2026 it can use the new Windows MIDI Services 1.0 in-box service
+- Reference: forum thread [#592](https://forum.electra.one/t/command-line-preset-file-upload-tool/592) posts 8/9/16 — Martin & kris confirmed the issue and recommend the File Transfer API path with **chunks ≤ 2 KB**
+
+**CTRL port mapping on Windows** (this hardware, 3-port USB MIDI Class device):
+- `MIDIOUT3 (Electra Controller)` (index 7 in our enum) ↔ `MIDIIN3 (Electra Controller)` (index 6) = port 3 = **CTRL**
+- `MIDIOUT2` / `MIDIIN2` = port 2
+- `Electra Controller` (no suffix) = port 1
+
+**The File Transfer API is the only reliable path for big presets**:
+1. Open cache:    `F0 00 21 45 01 2D F7`
+2. Register file: `F0 00 21 45 01 2E <fileId> <s0> <s1> <s2> <s3> F7`  — size split as 4 × 7-bit, little-endian (`s0 = size & 0x7F`, `s1 = (size >> 7) & 0x7F`, …)
+3. Chunks:        `F0 00 21 45 01 2F <fileId> <ascii-json-bytes> F7`  — one SysEx per ≤ 1-2 KB chunk
+4. Commit:        `F0 00 21 45 04 2D {"files":[{"id":1,"location":"slots","type":"preset","bankNumber":B,"slot":S,"md5":"<32-hex>"}]} F7` — MD5 over the **decoded** payload (raw JSON), not the SysEx-wrapped bytes
+5. Each command MUST include a Transaction ID (firmware ≥ 4.0): `0x00 <txid-lsb> <txid-msb>` inserted right after the manufacturer ID. Without it you can't correlate ACKs to commands.
+6. ACK format: `F0 00 21 45 7E 01 <txid-lsb> <txid-msb> F7` (success) / `…7E 00…` (NACK)
+
+**Listening for ACKs on Windows via ctypes + winmm** — two non-obvious traps:
+
+1. **Polling on `MHDR_DONE` races the driver.** The driver writes the SysEx bytes into the prepared buffer and only later sets the `MHDR_DONE` (bit 0 of `dwFlags`) — if your read happens between the partial-write and the flag set, you get `F0` followed by zeros. The fix is to **use `CALLBACK_FUNCTION`** with a `WINFUNCTYPE` trampoline so the driver hands you the buffer only after it's complete.
+
+2. **`hdr.lpData` as `c_char_p` truncates at the first NUL byte.** Electra SysEx contains `0x00 0x21 0x45` (manufacturer id) right after `F0`, so reading via `string_at(hdr.lpData, n)` would give you only `F0`. Read from the **underlying ctypes buffer** instead: keep a Python-side list of the buffers you allocated, look up which one this header refers to (`ctypes.addressof(headers[i]) == ctypes.addressof(hdr)`), and slice `buffers[i].raw[:n]`. See `server/win_bridge.py` in [electra-one-mcp](https://github.com/roomi-fields/electra-one-mcp).
+
+**Long-term path:** port to **Windows MIDI Services 1.0** via `winsdk` / `pywinrt`. It's the new in-box service Microsoft shipped to Win 11 in Feb 2026; it replaces `winmm.dll` and fixes the USB-MIDI 1.0 fragmentation issue.
+
+**Confirmed empirically on hardware (2026-05-26)**:
+- Small preset via simple `01 01` upload (< ~5 KB): works, loads & displays immediately
+- Tiny preset via FT API (~500 B, 3 chunks): commits, persists to disk, displays after a reload trigger
+- Medium preset via FT API (~6 KB, 25 chunks @ 256 B): same, works
+- Large preset via FT API (25 KB, 101 chunks): every single chunk ACK'd by device, commit ACK'd, `7E 05` preset-list-change event + `7E 02` preset-switch event fire — but **the file does not actually persist**. `Get Active Preset` (`02 01`) returns 0 bytes after this. Strong indication of a silent MD5 mismatch rollback on commit. To investigate next session.
+- **`Reload Preset Slot` (`08 08`) returns NACK** in this firmware (4.1.4) despite being in the docs. The docs say it takes no bank/slot bytes, but it might actually require them. `Switch Preset Slot` (`09 08 bank slot`) ACKs but is a no-op when already on the target slot.
+- **No SysEx query exists for "which bank/slot is currently displayed"**. The only way to know is to listen passively on the CTRL port for unsolicited `7E 02 bank slot` (preset switch) and `7E 08 bank` (bank switch) events, then maintain a client-side state machine.
+
+**Transaction IDs work in 4.1.4** — every command's ACK echoes the txid as `7E 01 <lsb> <msb> F7`. Use them; without them you can't correlate NACKs to commands when uploading 100+ chunks.
+
 ---
 
 ## 2. Injecting a widget into app.electra.one for live testing on hardware
