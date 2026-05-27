@@ -17,7 +17,21 @@ The demo wires two lanes — **NOTES** (top) and **VELOCITY** (bottom) — shari
 | 1 | NOTES | custom | 0 | 6×1 | Top row, full width |
 | 2 | VELOCITY | custom | 6 | 6×1 | Second row, full width |
 
-Add a third instance by appending another tile (slot 12, span 6×1) and a new entry in `lanes` in `widget.lua`.
+Add a third instance by appending another tile (slot 12, span 6×1) and a new entry in `lanes` in `widget.lua`. The per-lane state tables (`selectedStep`, `dragging`, `muted`, `laneMode`, `potState`) and `preset.onLoad` iterate over `#lanes` so no extra wiring is needed — just discover the firmware-assigned `potEvId` for the new tile by enabling the device logger and turning a pot (the diagnostic `print` in `potLane` reports the `ev.id` it receives) and put that value in the new lane's `potEvId` field.
+
+Per-lane fields:
+
+| Field | Required | Description |
+|---|---|---|
+| `name` | yes | Display name in the header strip |
+| `color` | yes | Accent colour (any `Theme.*`) |
+| `kind` | yes | `"note"` / `"pct"` / `"num"` — value formatter when no overlay is set |
+| `cells` | yes | 16-entry initial value table (0..127) |
+| `paramBase` | yes | Lowest virtual-param number for this lane's steps; step N writes to virtual param `paramBase + N` |
+| `potEvId` | yes | `ev.id` the firmware dispatches to this tile's pot (find via diagnostic print). Legacy alias: `encEdit` |
+| `targetLane` | no | Which lane this pot operates on (1-based). Default: `self`. Override to get the "top-pot-drives-top-tile" cross-dispatch on the 2-lane layout |
+| `gaugeOrientation` | no | `"h"` (default, thin bar at the bottom of each cell) or `"v"` (thin bar on the right edge) |
+| `overlay` | no | Custom label table (see below) — overrides `kind` |
 
 ## Interaction (firmware 4.1.4 reality)
 
@@ -75,7 +89,9 @@ Each lane writes to **16 consecutive virtual parameters** starting at `paramBase
 
 Wire downstream synth CCs / SysEx to these virtual params — the host DAW or a follow-up Lua block reads the values and fires the corresponding notes. Muted steps send `0` over MIDI but keep their stored value internally.
 
-The `commonRange` global (default 11) sets how many of the 16 steps are live. Cells beyond `commonRange` render with a CANVAS background and a dim dot — clearly outside the pattern. Hook `parameterMap.onChange` on a virtual param to drive this externally from a knob/list on another page.
+The `commonRange` global (default 16 = all steps active) sets how many of the 16 steps are live. Cells beyond `commonRange` render with a CANVAS background and a dim dot — clearly outside the pattern. The widget already wires `parameterMap.onChange` to follow virtual parameter `PARAM_COMMON_RANGE` (= **33** by default): map any fader or external CC to virtual param 33 on device 1 and the widget repaints live.
+
+The same `parameterMap.onChange` handler also keeps `lane.cells[step]` in sync with each lane's `paramBase + step` virtual params — so an external fader that writes to one of those slots will move the corresponding step in the widget. The reverse direction (widget → external) is filtered by `origin == LUA` to prevent the listener from looping back on its own writes.
 
 ## Visual conventions (matches the design system)
 
@@ -107,4 +123,4 @@ Paste `lib/theme.lua` at the top of your preset's Lua tab (no primitives require
 | "Remote control via SysEx and MIDI CC callbacks" | ✓ | Via `parameterMap.set(...)` and the tile's `values[].message` |
 | "Up to 6 controls per screen" | ◐ | The demo shows 2. Add tiles at slotId 12 / 18 / 24 / 30 to reach 6 |
 | "96 parameters / screen" | ◐ | Reachable when scaling to 6 instances |
-| "Common params shareable among multiple controls" | ◐ | `commonRange` is a module-level Lua global shared across instances. Wire to virtual param 33 via `parameterMap.onChange` for external driving |
+| "Common params shareable among multiple controls" | ✓ | `commonRange` is a module-level Lua global shared across instances and follows virtual param 33 via the built-in `parameterMap.onChange` handler — external fader controls all lanes at once |
