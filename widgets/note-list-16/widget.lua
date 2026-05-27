@@ -1,5 +1,5 @@
--- ===== note-list-16 · widget revision 148 =====
-WIDGET_REV = "148"
+-- ===== note-list-16 · widget revision 149 =====
+WIDGET_REV = "149"
 
 -- Widget: 16-Step Note List — Waldorf Q-style reusable step list.
 -- Generalised to N lanes (2 ships by default). Each lane = one custom
@@ -48,6 +48,11 @@ Theme.require("0.3")
 --                     "top pot drives top tile" feel), else self.
 --   gaugeOrientation  "h" (default, thin bar at bottom of each cell)
 --                     or "v" (thin bar on the right edge of each cell).
+--   initialMuted      optional table { [3]=true, [7]=true, ... } listing
+--                     step indices (1..16) that should start muted on
+--                     preset load. Runtime double-click toggles each
+--                     step's mute state; the underlying value is always
+--                     preserved.
 lanes = {
   [1] = {
     name = "NOTES", color = Theme.ACCENT, kind = "note",
@@ -82,7 +87,13 @@ potState     = {}          -- per-lane pot click state machine
 for i = 1, #lanes do
   selectedStep[i] = 1
   dragging[i]     = nil
-  muted[i]        = {}
+  -- Initial mute table: copy from lane.initialMuted if provided, else
+  -- start with every step active (empty table). Each entry uses the
+  -- step index as key (1..16) → true to mute.
+  muted[i] = {}
+  if lanes[i].initialMuted then
+    for step, m in pairs(lanes[i].initialMuted) do muted[i][step] = m end
+  end
   laneMode[i]     = "navigate"
   potState[i]     = {}
 end
